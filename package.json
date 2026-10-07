@@ -1,0 +1,17 @@
+{
+  "scripts": {
+    "dev": "tsx server.ts",
+    "build": "esbuild server.ts --bundle --platform=node --format=cjs --outfile=dist/server.cjs --external:express && cp index.html manifest.json icon.svg dist/"
+  },
+  "dependencies": {
+    "@google/genai": "^2.8.0",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^25.9.2",
+    "esbuild": "^0.24.0",
+    "tsx": "^4.22.4"
+  }
+}

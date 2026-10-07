@@ -1,0 +1,2301 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="PachiMind">
+  <meta name="theme-color" content="#e8a020">
+  <title>PachiMind</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" type="image/svg+xml" href="/icon.svg">
+  <link rel="apple-touch-icon" href="/icon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;0,9..144,700;1,9..144,400&family=DM+Sans:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:  #0c0b09; --bg2: #161410; --bg3: #1e1c17; --bg4: #252218;
+      --b:   #2a2820; --bb:  #38352a;
+      --ac:  #e8a020; --acd: rgba(232,160,32,.1); --acg: rgba(232,160,32,.2);
+      --ac2: #1de9b0; --ac2d:rgba(29,233,176,.1);
+      --pu:  #c084fc; --pud: rgba(192,132,252,.1);
+      --rd:  #f87171; --rdd: rgba(248,113,113,.1);
+      --tx:  #f0ece4; --tx2: #9e9480; --tx3: #5e5848;
+      --r:9px; --rl:13px;
+      --sidebar:224px;
+    }
+    [data-theme="light"]{
+      --bg:  #f5f3ee; --bg2: #ede9e0; --bg3: #e4dfd4; --bg4: #dbd5c8;
+      --b:   #ccc6b8; --bb:  #b8b1a0;
+      --ac:  #c07010; --acd: rgba(192,112,16,.1); --acg: rgba(192,112,16,.2);
+      --ac2: #0a8060; --ac2d:rgba(10,128,96,.1);
+      --pu:  #7c3aed; --pud: rgba(124,58,237,.1);
+      --rd:  #dc2626; --rdd: rgba(220,38,38,.1);
+      --tx:  #1c1a16; --tx2: #5a5446; --tx3: #9a9080;
+    }
+    html,body{height:100%}
+    body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx);min-height:100vh;display:flex}
+
+    .memory-view{line-height:1.55;overflow-wrap:anywhere}
+    .memory-view p{margin:10px 0}
+    .memory-view h3{margin:18px 0 10px}
+    .memory-view .btn{display:inline-flex;margin:4px 4px 4px 0;max-width:100%;white-space:normal;text-align:left}
+    .memory-view ul{padding-left:24px}
+    .memory-view blockquote{border-left:3px solid var(--ac);padding:8px 12px;margin:12px 0;color:var(--tx2)}
+    .memory-view label{font-size:13px;color:var(--tx2)}
+    .memory-view textarea{resize:vertical;line-height:1.5}
+    /* ══ SIDEBAR ══════════════════════════════════════════════ */
+    .sidebar{
+      width:var(--sidebar);flex-shrink:0;
+      background:var(--bg2);border-right:1px solid var(--b);
+      display:flex;flex-direction:column;height:100vh;position:sticky;top:0;
+      overflow-y:auto;
+    }
+    .sb-brand{
+      padding:22px 20px 16px;
+      border-bottom:1px solid var(--b);
+    }
+    .brand-name{
+      font-family:'Fraunces',serif;font-size:20px;font-weight:700;letter-spacing:-.02em;
+      color:var(--tx);line-height:1;
+    }
+    .brand-name span{color:var(--ac)}
+    .brand-sub{font-size:11px;color:var(--tx3);margin-top:4px;font-family:'JetBrains Mono',monospace}
+    .sb-section{padding:16px 12px 8px;font-size:10px;font-family:'JetBrains Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--tx3)}
+    .nav-item{
+      display:flex;align-items:center;gap:10px;
+      padding:8px 12px;border-radius:var(--r);margin:1px 8px;
+      cursor:pointer;transition:all .15s;font-size:13.5px;color:var(--tx2);
+      text-decoration:none;
+    }
+    .nav-item:hover{background:var(--bg3);color:var(--tx)}
+    .nav-item.on{background:var(--acd);color:var(--ac);font-weight:500}
+    .nav-item.on .ni-icon{filter:none}
+    .ni-icon{font-size:14px;width:18px;text-align:center;flex-shrink:0}
+    .ni-badge{margin-left:auto;background:var(--ac);color:#080600;font-size:9px;font-weight:700;padding:1px 6px;border-radius:20px}
+    .sb-stats{margin:auto 0 0;padding:16px;border-top:1px solid var(--b)}
+    .sb-stat{display:flex;justify-content:space-between;padding:4px 0;font-size:12px;color:var(--tx3)}
+    .sb-stat span{color:var(--tx2);font-family:'JetBrains Mono',monospace;font-size:11px}
+
+    /* ══ MAIN ══════════════════════════════════════════════════ */
+    .main-area{flex:1;display:flex;flex-direction:column;min-width:0;overflow-y:auto;height:100vh}
+    .topbar{
+      display:flex;align-items:center;gap:12px;
+      padding:0 28px;height:52px;
+      background:rgba(12,11,9,.9);backdrop-filter:blur(16px);
+      border-bottom:1px solid var(--b);position:sticky;top:0;z-index:40;
+    }
+    .page-title{font-family:'Fraunces',serif;font-size:16px;font-weight:600;color:var(--tx);flex:1}
+    .search-box{display:flex;align-items:center;gap:8px;background:var(--bg3);border:1px solid var(--b);border-radius:var(--r);padding:6px 12px;transition:border-color .2s}
+    .search-box:focus-within{border-color:rgba(232,160,32,.4)}
+    .search-box input{background:none;border:none;outline:none;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--tx);width:200px}
+    .search-box input::placeholder{color:var(--tx3)}
+    .main-content{flex:1;padding:28px;max-width:1040px;width:100%;overflow:hidden}
+    .main-content.full{padding:0;max-width:100%}
+
+    /* ══ TABLERO ═══════════════════════════════════════════════ */
+    .stats-row{display:flex;gap:10px;margin-bottom:24px;flex-wrap:wrap}
+    .stat-card{background:var(--bg2);border:1px solid var(--b);border-radius:var(--r);padding:14px 18px;min-width:110px}
+    .stat-n{font-family:'Fraunces',serif;font-size:26px;font-weight:600;line-height:1;display:block;margin-bottom:4px}
+    .stat-l{font-size:11px;color:var(--tx3);font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.06em}
+    .af-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px}
+    .af{padding:5px 14px;border:1px solid var(--b);border-radius:20px;font-size:12.5px;color:var(--tx3);background:transparent;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s}
+    .af:hover,.af.on{background:var(--bg3);color:var(--tx);border-color:var(--bb)}
+    .board-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+    .board-col{background:var(--bg2);border:1px solid var(--b);border-radius:var(--rl);overflow:hidden}
+    .bc-head{display:flex;align-items:center;gap:8px;padding:11px 14px;border-bottom:1px solid var(--b)}
+    .bc-icon{font-size:13px}
+    .bc-title{font-family:'Fraunces',serif;font-size:13px;font-weight:600;flex:1}
+    .bc-count{font-size:10px;color:var(--tx3);font-family:'JetBrains Mono',monospace}
+    .bc-body{padding:6px}
+    .note-row{display:flex;align-items:flex-start;gap:9px;padding:8px 10px;border-radius:7px;cursor:pointer;transition:background .15s}
+    .note-row:hover{background:var(--bg3)}
+    .nr-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;margin-top:6px}
+    .nr-dot.alta{background:var(--rd)}.nr-dot.media{background:var(--ac)}.nr-dot.baja,.nr-dot.none{background:var(--bb)}
+    .nr-title{font-size:13px;line-height:1.35;margin-bottom:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .nr-meta{font-size:11px;color:var(--tx3)}
+    .bc-empty{padding:16px;text-align:center;font-size:12px;color:var(--tx3);font-style:italic}
+    .bc-more{padding:6px 10px;font-size:11px;color:var(--tx3);cursor:pointer;transition:color .2s;font-style:italic}
+    .bc-more:hover{color:var(--tx2)}
+
+    /* ══ NOTE DETAIL OVERLAY ════════════════════════════════════ */
+    .overlay{position:fixed;inset:0;z-index:100;display:flex}
+    .overlay-bg{position:absolute;inset:0;background:rgba(0,0,0,.5);backdrop-filter:blur(3px)}
+    .overlay-panel{position:relative;z-index:1;margin-left:auto;width:520px;max-width:95vw;background:var(--bg2);border-left:1px solid var(--b);overflow-y:auto;display:flex;flex-direction:column;height:100%}
+    .op-head{display:flex;align-items:center;gap:10px;padding:14px 20px;border-bottom:1px solid var(--b);position:sticky;top:0;background:var(--bg2);z-index:2}
+    .op-close{background:none;border:none;cursor:pointer;color:var(--tx3);font-size:17px;margin-left:auto;padding:4px;transition:color .2s;min-width:32px;min-height:32px;display:flex;align-items:center;justify-content:center}
+    .op-close:hover{color:var(--tx)}
+    .op-body{padding:22px;flex:1;overflow-y:auto}
+    .op-title{font-family:'Fraunces',serif;font-size:19px;font-weight:600;margin-bottom:12px;line-height:1.3;color:var(--tx)}
+    .tag-row{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:14px}
+    .tag{font-size:10px;padding:2px 8px;border-radius:4px;background:var(--bg3);border:1px solid var(--b);color:var(--tx2);font-family:'JetBrains Mono',monospace}
+    .tag.ac{background:var(--acd);color:var(--ac);border-color:rgba(232,160,32,.25)}
+    .meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
+    .mg{background:var(--bg3);border-radius:8px;padding:10px 12px}
+    .mg-k{font-size:10px;color:var(--tx3);margin-bottom:2px;font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.06em}
+    .mg-v{font-size:13px;font-weight:500}
+    .content-md{font-size:13.5px;line-height:1.8;color:var(--tx2);white-space:pre-wrap}
+    .content-md h1,.content-md h2,.content-md h3{font-family:'Fraunces',serif;color:var(--tx);margin:14px 0 6px}
+    .content-md h1{font-size:18px}.content-md h2{font-size:16px}.content-md h3{font-size:14px}
+
+    /* ══ SEARCH ══════════════════════════════════════════════════ */
+    .sr-item{background:var(--bg2);border:1px solid var(--b);border-radius:var(--r);padding:13px 15px;margin-bottom:8px;cursor:pointer;transition:border-color .2s}
+    .sr-item:hover{border-color:var(--bb)}
+    .sr-title{font-family:'Fraunces',serif;font-size:15px;font-weight:600;margin-bottom:4px}
+    .sr-meta{font-size:11px;color:var(--tx3);margin-bottom:5px}
+    .sr-excerpt{font-size:12.5px;color:var(--tx2);line-height:1.55}
+
+    /* ══ FORMS ════════════════════════════════════════════════ */
+    .form-wrap{max-width:600px}
+    .section-title{font-family:'Fraunces',serif;font-size:20px;font-weight:600;margin-bottom:6px}
+    .section-sub{font-size:13px;color:var(--tx2);margin-bottom:24px;line-height:1.5}
+    .field-label{font-size:11px;color:var(--tx3);margin-bottom:6px;font-family:'JetBrains Mono',monospace;letter-spacing:.06em;text-transform:uppercase;display:block}
+    .fi{width:100%;background:var(--bg2);border:1px solid var(--b);border-radius:var(--r);padding:10px 14px;font-family:'DM Sans',sans-serif;font-size:14px;color:var(--tx);outline:none;transition:border-color .2s;margin-bottom:14px}
+    .fi:focus{border-color:rgba(232,160,32,.5)}.fi::placeholder{color:var(--tx3)}
+    textarea.fi{resize:vertical;min-height:130px;line-height:1.65;font-size:13.5px}
+    select.fi{cursor:pointer}
+
+    /* ══ AUDIO ══════════════════════════════════════════════════ */
+    .audio-row{display:flex;align-items:center;gap:10px;background:var(--bg2);border:1px solid var(--b);border-radius:var(--r);padding:10px 14px;margin-bottom:14px}
+    .rec-btn{width:34px;height:34px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;background:var(--bg3);color:var(--tx2);transition:all .2s}
+    .rec-btn:hover{background:var(--bg4);color:var(--tx)}
+    .rec-btn.rec{background:rgba(248,113,113,.15);color:var(--rd);animation:rp 1.2s ease-in-out infinite}
+    @keyframes rp{0%,100%{box-shadow:0 0 0 0 rgba(248,113,113,.4)}50%{box-shadow:0 0 0 7px rgba(248,113,113,0)}}
+    .rec-label{flex:1;font-size:13px;color:var(--tx3)}.rec-label.active{color:var(--rd)}
+    .rec-time{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--tx3)}
+
+    /* ══ BUTTONS ════════════════════════════════════════════════ */
+    .btn{display:flex;align-items:center;justify-content:center;gap:7px;padding:10px 18px;border-radius:var(--r);border:none;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer;transition:all .2s}
+    .btn:disabled{opacity:.35;cursor:not-allowed;transform:none!important}
+    .btn-full{width:100%;margin-bottom:10px}
+    .btn-primary{background:var(--ac);color:#080600;font-weight:700}
+    .btn-primary:hover:not(:disabled){opacity:.88;transform:translateY(-1px);box-shadow:0 4px 18px var(--acg)}
+    .btn-gemini{background:var(--pud);color:var(--pu);border:1px solid rgba(192,132,252,.25)}
+    .btn-gemini:hover:not(:disabled){background:rgba(192,132,252,.18)}
+    .btn-ghost{background:var(--bg3);color:var(--tx2);border:1px solid var(--bb)}
+    .btn-ghost:hover:not(:disabled){color:var(--tx);border-color:var(--tx3)}
+    .btn-ye{background:var(--acd);color:var(--ac);border:1px solid rgba(232,160,32,.25)}
+    .btn-ye:hover:not(:disabled){background:rgba(232,160,32,.18)}
+    .btn-back{background:none;border:none;cursor:pointer;color:var(--tx3);font-size:12px;display:inline-flex;align-items:center;gap:5px;transition:color .2s;margin-bottom:16px;padding:0}
+    .btn-back:hover{color:var(--tx2)}
+
+    /* ══ REVIEW / ENTITY CARDS ══════════════════════════════════ */
+    .review-box{background:var(--bg2);border:1px solid var(--b);border-radius:var(--rl);padding:20px;margin-bottom:14px}
+    .gemini-note{background:var(--pud);border:1px solid rgba(192,132,252,.2);border-radius:var(--r);padding:10px 12px;font-size:12.5px;color:var(--tx2);line-height:1.6;font-style:italic;margin:10px 0}
+    .field-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(42,40,32,.8)}
+    .field-row:last-child{border-bottom:none}
+    .fk{font-size:11px;color:var(--tx3)}
+    .fsel{background:var(--bg3);border:1px solid var(--b);border-radius:5px;padding:4px 8px;font-family:'DM Sans',sans-serif;font-size:12px;color:var(--tx);outline:none;cursor:pointer}
+    .fsel:focus{border-color:rgba(232,160,32,.4)}
+    .fsel-w{width:100%;padding:8px 10px;margin-bottom:12px}
+    .or-row{display:flex;align-items:center;gap:10px;font-size:11px;color:var(--tx3);margin:12px 0}
+    .or-row::before,.or-row::after{content:'';flex:1;height:1px;background:var(--b)}
+    .entity-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+    .en-card{background:var(--bg2);border:1px solid var(--b);border-radius:var(--rl);cursor:pointer;transition:border-color .2s;overflow:hidden}
+    .en-card:hover{border-color:var(--bb)}
+    .en-card-head{padding:13px 15px;border-bottom:1px solid var(--b);background:var(--bg3)}
+    .en-card-name{font-family:'Fraunces',serif;font-size:14px;font-weight:600}
+    .en-card-body{padding:10px 15px}
+    .en-card-role{font-size:11px;color:var(--ac);font-family:'JetBrains Mono',monospace;margin-bottom:4px}
+    .en-card-org{font-size:12px;color:var(--tx2)}
+
+    /* ══ ALERTS / STATES ════════════════════════════════════════ */
+    .alert-err{background:var(--rdd);border:1px solid rgba(248,113,113,.2);border-radius:var(--r);padding:10px 12px;font-size:12.5px;color:var(--rd);margin-bottom:12px;line-height:1.5}
+    .alert-sug{background:rgba(232,160,32,.07);border:1px solid rgba(232,160,32,.2);border-radius:var(--rl);padding:16px;margin-top:20px}
+    .loading{display:flex;align-items:center;justify-content:center;gap:10px;padding:48px 0}
+    .spinner{width:16px;height:16px;border:2px solid var(--bb);border-top-color:var(--ac);border-radius:50%;animation:spin .7s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .loading-label{font-size:13px;color:var(--tx3)}
+    .empty-state{text-align:center;padding:48px 0}
+    .es-icon{font-size:32px;opacity:.25;margin-bottom:10px}
+    .es-text{font-size:13px;color:var(--tx3);font-style:italic}
+    .success{text-align:center;padding:48px 0}
+    .s-icon{width:52px;height:52px;border-radius:50%;background:var(--acd);border:1px solid rgba(232,160,32,.25);display:flex;align-items:center;justify-content:center;font-size:22px;margin:0 auto 16px}
+    .s-title{font-family:'Fraunces',serif;font-size:19px;font-weight:600;margin-bottom:8px}
+    .s-path{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--tx3);margin-bottom:24px;word-break:break-all;line-height:1.6}
+    .hint{font-size:11px;color:var(--tx3);text-align:center;margin-top:6px;font-style:italic}
+    .divider{border:none;border-top:1px solid var(--b);margin:14px 0}
+
+    /* ══ LOGIN ══════════════════════════════════════════════════ */
+    .login-page{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:18px;padding:24px;width:100%}
+    .login-brand{font-family:'Fraunces',serif;font-size:36px;font-weight:700;letter-spacing:-.02em}
+    .login-brand span{color:var(--ac)}
+    .login-sub{font-size:13px;color:var(--tx3);margin-top:-8px}
+    .login-line{width:40px;height:1px;background:var(--b)}
+
+    /* ══ MOBILE ══════════════════════════════════════════════ */
+    @media(max-width:700px){
+      body{flex-direction:column}
+
+      /* ── Sidebar → Bottom Nav ── */
+      .sidebar{
+        position:fixed;bottom:0;left:0;right:0;top:auto;
+        width:100%;height:56px;
+        flex-direction:row;align-items:center;justify-content:space-around;
+        border-right:none;border-top:1px solid var(--b);
+        overflow-x:auto;z-index:200;
+        padding:0 4px;padding-bottom:env(safe-area-inset-bottom);
+      }
+      .sb-brand,.sb-section,.sb-stats{display:none}
+      .nav-item{
+        flex-direction:column;gap:2px;padding:6px 10px;margin:0;
+        font-size:9px;min-width:44px;text-align:center;border-radius:8px;
+        flex:1;justify-content:center;
+      }
+      .ni-icon{font-size:16px}
+      .ni-badge{position:absolute;top:4px;right:4px;font-size:8px;padding:1px 4px}
+
+      /* ── Main area ── */
+      .main-area{
+        flex:1;overflow-y:auto;padding-bottom:70px;
+        min-height:0;
+      }
+      .topbar{
+        position:sticky;top:0;z-index:100;
+        padding:10px 14px;gap:8px;
+      }
+      .page-title{font-size:15px}
+      .search-box{flex:1}
+      .search-box input{width:100%;min-width:0}
+      .main-content{padding:14px}
+
+      /* ── Board grid ── */
+      .board-grid{grid-template-columns:1fr}
+      .stats-row{gap:8px}
+      .stat-card{padding:10px 12px}
+
+      /* ── Overlay full screen ── */
+      .overlay-panel{
+        position:fixed;inset:0;width:100%;max-height:100%;
+        border-radius:0;border-left:none;
+        padding-bottom:env(safe-area-inset-bottom);
+      }
+      .op-body{padding:14px;padding-bottom:80px}
+
+      /* ── Forms ── */
+      .form-wrap{max-width:100%;padding:14px}
+      .af-row{flex-wrap:wrap;gap:4px}
+      .af{min-height:36px}
+
+      /* ── Entity grid → 2 cols ── */
+      .entity-grid{grid-template-columns:1fr 1fr}
+
+      /* ── Chat ── */
+      #chat-msgs{min-height:200px}
+
+      /* ── Buttons touch targets ── */
+      .btn{min-height:40px}
+      .btn-primary,.btn-ghost{padding:10px 16px}
+    }
+.todo-view{line-height:1.5;overflow-wrap:anywhere}.todo-view input,.todo-view select,.todo-view textarea{background:var(--bg2);color:var(--tx);border:1px solid var(--bb);border-radius:8px;padding:9px 11px;font:inherit;min-height:40px}.todo-view input:focus-visible,.todo-view select:focus-visible,.todo-view textarea:focus-visible{outline:2px solid var(--ac);outline-offset:2px}.todo-view label{font-size:13px;color:var(--tx2)}.todo-view textarea{resize:vertical}.todo-view button:disabled{opacity:.5;cursor:wait}.todo-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}.todo-fields label{display:grid;gap:5px}.todo-fields input,.todo-fields select{width:100%}
+    ::-webkit-scrollbar{width:4px}
+    ::-webkit-scrollbar-track{background:transparent}
+    ::-webkit-scrollbar-thumb{background:var(--bb);border-radius:2px}
+  </style>
+</head>
+<body>
+<div id="app" style="display:flex;width:100%;min-height:100vh"></div>
+<script>
+// ══════════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════════
+const S={
+  token:sessionStorage.getItem('pm_token'),
+  view:'tablero',
+  stats:null,drafts_count:0,
+  areaFilter:'todos',
+  boards:{},boardsLoading:false,
+  openNote:null,openLoading:false,
+  searchQ:'',searchResults:null,searchLoading:false,
+  nnStep:'input',nnTitle:'',nnContent:'',nnParsed:null,nnResult:null,nnError:null,nnConfirming:false,nnManualResp:'',
+  recorder:null,recording:false,recTimer:null,recSecs:0,transcribing:false,
+  ibStep:'list',ibDrafts:[],ibLoading:false,ibError:null,ibNote:null,ibParsed:null,ibResult:null,ibConfirming:false,ibManualResp:'',
+  paLoading:false,paTotal:0,paDone:0,paResults:[],paError:null,
+  enTab:'persona',enList:{},enLoading:false,enError:null,
+  enStep:'list',enForm:{title:'',tipo:'persona',area:'Laboral',organizacion:'',cliente:'',rol:'',tags:'',content:''},
+  enResult:null,enError2:null,enConfirming:false,enSuggestions:[],
+  loginError:null,
+  // vault sync
+  vlBroken:null,vlBrokenLoading:false,vlBrokenError:null,
+  vlGenResult:null,vlGenLoading:false,vlGenError:null,vlGenDryRun:true,
+  // sistema
+  sysData:null,sysLoading:false,sysError:null,
+  // tags db
+  allNotes:[],tagSelected:null,tagSearch:'',
+  // attachments
+  attachUploading:false,attachError:null,attachList:[],
+  // semantic suggestions
+  semSuggestions:null,semLoading:false,semError:null,semSelected:[],
+  // chat
+  chatMessages:[],chatInput:'',chatLoading:false,chatError:null,
+  // theme
+  theme:localStorage.getItem('pm_theme')||'dark',
+  // board expansion
+  boardExpanded:{},
+  // entity edit
+  enEditing:null,
+  // reuniones (NotebookLM)
+  rnStep:'notebooks',rnNotebooks:[],rnNotebooksLoading:false,
+  rnNotebookId:null,rnNotebookTitle:'',
+  rnSources:[],rnSourcesLoading:false,rnSelected:[],
+  rnArea:'Laboral',rnError:null,
+  // sacar el jugo
+  xfLoading:false,xfError:null,
+}
+
+const VIEWS=[
+  {id:'tablero',  icon:'◈', label:'Tablero'},
+  {id:'memoria', icon:'◷', label:'Memoria'},
+  {id:'todo', icon:'✓', label:'TODO'},
+  {id:'nueva',    icon:'✦', label:'Nueva nota'},
+  {id:'reuniones',icon:'⏺', label:'Reuniones'},
+  {id:'entidades',icon:'◎', label:'Entidades'},
+  {id:'inbox',    icon:'▽', label:'Inbox',badge:true},
+  {id:'chat',     icon:'◉', label:'Chat IA'},
+  {id:'vault',    icon:'⬡', label:'Vault'},
+  {id:'tags',     icon:'#', label:'Tags'},
+  {id:'sistema',  icon:'◇', label:'Sistema'},
+]
+
+// ══════════════════════════════════════════════════════════
+// API
+// ══════════════════════════════════════════════════════════
+async function api(path,opts={}){
+  const isFormData=opts.body instanceof FormData
+  const h=isFormData?{}:{'Content-Type':'application/json'}
+  Object.assign(h,opts.headers||{})
+  if(S.token)h['Authorization']=`Bearer ${S.token}`
+  return fetch(path,{...opts,headers:h})
+}
+
+// ══════════════════════════════════════════════════════════
+// RENDER
+// ══════════════════════════════════════════════════════════
+function render(){
+  document.documentElement.setAttribute('data-theme',S.theme)
+  const app=document.getElementById('app')
+  if(!S.token){app.innerHTML=`<div style="width:100%">${renderLogin()}</div>`;return}
+  const currentView=VIEWS.find(v=>v.id===S.view)
+  app.innerHTML=`
+    <div class="sidebar">
+      <div class="sb-brand">
+        <div class="brand-name">Pachi<span>Mind</span></div>
+        <div class="brand-sub">vault personal</div>
+      </div>
+      <div class="sb-section">Navegación</div>
+      ${VIEWS.map(v=>`
+        <div class="nav-item${S.view===v.id?' on':''}" onclick="setView('${v.id}')">
+          <span class="ni-icon">${v.icon}</span>
+          ${v.label}
+          ${v.badge&&S.drafts_count>0?`<span class="ni-badge">${S.drafts_count}</span>`:''}
+        </div>`).join('')}
+      ${S.stats?`
+        <div class="sb-stats">
+          <div class="sb-stat">Notas totales <span>${S.stats.total_notes}</span></div>
+          <div class="sb-stat">Proyectos <span>${S.stats.by_type?.proyecto||0}</span></div>
+          <div class="sb-stat">IA indexables <span>${S.stats.ai_indexable_notes}</span></div>
+          ${S.stats.notes_to_review>0?`<div class="sb-stat" style="color:var(--ac);cursor:pointer" onclick="setView('tablero')" title="Ver notas para revisar">Sin revisar <span>${S.stats.notes_to_review}</span></div>`:''}
+        </div>`:''}
+    </div>
+    <div class="main-area">
+      <div class="topbar">
+        <div class="page-title">${currentView?.label||''}</div>
+        <div class="search-box">
+          <span style="color:var(--tx3);font-size:12px">⌕</span>
+          <input id="search-inp" placeholder="Buscar en el vault..."
+            value="${esc(S.searchQ)}" oninput="onSearch(this.value)"
+            onkeydown="if(event.key==='Escape'){S.searchQ='';S.searchResults=null;render()}">
+        </div>
+        <span style="font-size:14px;color:var(--tx3);cursor:pointer;padding:4px;transition:color .2s;user-select:none" onclick="toggleTheme()" title="Cambiar tema">${S.theme==='dark'?'○':'●'}</span>
+        <span style="font-size:12px;color:var(--tx3);cursor:pointer;padding:4px;transition:color .2s" onmouseover="this.style.color='var(--tx)'" onmouseout="this.style.color='var(--tx3)'" onclick="logout()" title="Salir">⎋</span>
+      </div>
+      <div class="main-content${S.view==='tags'?' full':''}">
+        ${S.searchQ&&S.searchResults!==null?renderSearch():
+          S.view==='tablero'   ?renderTablero():
+          S.view==='memoria'   ?renderMemory():
+          S.view==='todo'      ?renderTodo():
+          S.view==='nueva'     ?renderNueva():
+          S.view==='reuniones' ?renderReuniones():
+          S.view==='entidades' ?renderEntidades():
+          S.view==='vault'     ?renderVault():
+          S.view==='chat'      ?renderChat():
+          S.view==='tags'      ?renderTags():
+          S.view==='sistema'   ?renderSistema():
+                                renderInbox()}
+      </div>
+    </div>
+    ${S.openNote?buildOverlayHTML():''}
+  `
+  if(S.openNote)document.getElementById('app').querySelector('.overlay-bg').onclick=closeNote
+}
+
+// ══════════════════════════════════════════════════════════
+// LOGIN
+// ══════════════════════════════════════════════════════════
+function renderLogin(){
+  return`<div class="login-page">
+    <div class="login-brand">Pachi<span>Mind</span></div>
+    <div class="login-line"></div>
+    <div class="login-sub">vault personal</div>
+    ${S.loginError?`<div class="alert-err" style="max-width:300px">${S.loginError}</div>`:''}
+    <input class="fi" style="max-width:300px;text-align:center;letter-spacing:.1em" type="password"
+      id="pwd" placeholder="contraseña" autocomplete="current-password"
+      onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="btn btn-primary" style="max-width:300px;width:100%" onclick="doLogin()">Entrar</button>
+  </div>`
+}
+async function doLogin(){
+  const pwd=document.getElementById('pwd')?.value;S.loginError=null
+  try{
+    const r=await fetch('/api/auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pwd})})
+    const d=await r.json()
+    if(!r.ok||!d.ok)throw new Error(d.error||'Contraseña incorrecta')
+    S.token=d.token;sessionStorage.setItem('pm_token',d.token)
+    loadAll();if(S.view==='memoria')loadMemoryProjects();if(S.view==='todo')loadTodo()
+  }catch(e){S.loginError=e.message;render()}
+}
+function logout(){S.token=null;sessionStorage.removeItem('pm_token');S.loginError=null;render()}
+
+// ══════════════════════════════════════════════════════════
+// TABLERO
+// ══════════════════════════════════════════════════════════
+const SECTIONS=[
+  {tipo:'proyecto', label:'Proyectos',  icon:'◈', color:'var(--pu)'},
+  {tipo:'accion',   label:'Acciones',   icon:'→', color:'var(--ac)'},
+  {tipo:'reunion',  label:'Reuniones',  icon:'◎', color:'var(--ac2)'},
+  {tipo:'decision', label:'Decisiones', icon:'◆', color:'#60a5fa'},
+  {tipo:'recurso',  label:'Recursos',   icon:'▣', color:'#34d399'},
+  {tipo:'nota',     label:'Notas',      icon:'◇', color:'var(--tx3)'},
+]
+const AREAS=['todos','Laboral','Personal','Familia','Amigos','Apostolado']
+
+function renderTablero(){
+  if(S.boardsLoading)return`<div class="loading"><div class="spinner"></div><span class="loading-label">Cargando...</span></div>`
+  const st=S.stats
+  return`
+    ${st?`<div class="stats-row">
+      <div class="stat-card"><span class="stat-n">${st.total_notes}</span><span class="stat-l">notas</span></div>
+      <div class="stat-card"><span class="stat-n">${st.by_type?.proyecto||0}</span><span class="stat-l">proyectos</span></div>
+      <div class="stat-card"><span class="stat-n" style="color:var(--ac2)">${st.ai_indexable_notes}</span><span class="stat-l">IA ready</span></div>
+      ${S.drafts_count>0?`<div class="stat-card" style="border-color:rgba(232,160,32,.3)"><span class="stat-n" style="color:var(--ac)">${S.drafts_count}</span><span class="stat-l">inbox</span></div>`:''}
+    </div>`:''}
+    <div class="af-row">
+      ${AREAS.map(a=>`<button class="af${S.areaFilter===a?' on':''}" onclick="setArea('${a}')">${a==='todos'?'Todo':a}</button>`).join('')}
+    </div>
+    ${(S.boards['__revisar']||[]).length?`
+    <div style="background:rgba(232,160,32,.06);border:1px solid rgba(232,160,32,.25);border-radius:var(--rl);padding:14px 16px;margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        <span style="color:var(--ac);font-size:13px">◈</span>
+        <span style="font-family:'Fraunces',serif;font-size:14px;font-weight:600;color:var(--ac)">Para revisar</span>
+        <span style="background:var(--ac);color:#080600;font-size:10px;font-weight:700;padding:1px 7px;border-radius:10px">${(S.boards['__revisar']||[]).length}</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        ${(S.boards['__revisar']||[]).map(n=>`
+          <div style="display:flex;align-items:center;gap:10px;background:var(--bg2);border:1px solid var(--b);border-radius:var(--r);padding:9px 12px;cursor:pointer;transition:border-color .15s" onclick="openNote('${esc(n.id)}')" onmouseover="this.style.borderColor='var(--ac)'" onmouseout="this.style.borderColor='var(--b)'">
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:500;color:var(--tx)">${esc(n.title.replace(/\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g,'$1'))}</div>
+              <div style="font-size:11px;color:var(--tx3);margin-top:2px">${[n.tipo||n.area,n.estado].filter(Boolean).join(' · ')}</div>
+            </div>
+            <span style="font-size:11px;color:var(--ac);flex-shrink:0">revisar →</span>
+            <button style="background:none;border:1px solid var(--b);border-radius:6px;cursor:pointer;color:var(--tx3);font-size:11px;padding:3px 8px;flex-shrink:0" onclick="event.stopPropagation();markRevisado('${esc(n.id)}')" title="Marcar como revisado">✓ Revisado</button>
+          </div>`).join('')}
+      </div>
+    </div>`:''}
+    <div class="board-grid">
+      ${SECTIONS.map(s=>renderCol(s)).join('')}
+    </div>`
+}
+
+function renderCol(sec){
+  let notes=S.boards[sec.tipo]||[]
+  if(S.areaFilter!=='todos')notes=notes.filter(n=>n.area===S.areaFilter)
+  const expanded=S.boardExpanded[sec.tipo]
+  const show=expanded?notes:notes.slice(0,6)
+  return`<div class="board-col">
+    <div class="bc-head" style="border-top:2px solid ${sec.color}">
+      <span class="bc-icon" style="color:${sec.color}">${sec.icon}</span>
+      <span class="bc-title">${sec.label}</span>
+      <span class="bc-count">${notes.length}</span>
+    </div>
+    <div class="bc-body">
+      ${show.length?show.map(n=>`<div class="note-row" onclick="openNote('${esc(n.id)}')">
+        <div class="nr-dot ${n.prioridad||'none'}"></div>
+        <div style="flex:1;min-width:0">
+          <div class="nr-title">${esc(n.title.replace(/\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g,'$1'))}</div>
+          <div class="nr-meta">${[n.estado,n.cliente?n.cliente.replace(/\[\[|\]\]/g,''):''].filter(Boolean).join(' · ')}</div>
+        </div>
+      </div>`).join(''):`<div class="bc-empty">—</div>`}
+      ${notes.length>6&&!expanded?`<div class="bc-more" style="cursor:pointer" onclick="S.boardExpanded['${sec.tipo}']=true;render()">+ ${notes.length-6} más</div>`:''}
+      ${expanded&&notes.length>6?`<div class="bc-more" style="cursor:pointer" onclick="S.boardExpanded['${sec.tipo}']=false;render()">▲ Colapsar</div>`:''}
+    </div>
+  </div>`
+}
+
+// ══════════════════════════════════════════════════════════
+// NOTE OVERLAY
+// ══════════════════════════════════════════════════════════
+function buildOverlayHTML(){
+  const n=S.openNote
+  const m=n?.metadata||{}
+  const body=n?.content||''
+  const stripped=body.replace(/^---[\s\S]*?---\n?/,'').trim()
+  const tags=[m.tipo,m.area,m.estado].filter(Boolean)
+  return`<div class="overlay">
+    <div class="overlay-bg"></div>
+    <div class="overlay-panel">
+      <div class="op-head">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--tx3)">${esc(n?.path||'')}</span>
+        <button class="op-close" onclick="closeNote()">✕</button>
+      </div>
+      <div class="op-body">
+        ${S.openLoading?`<div class="loading"><div class="spinner"></div></div>`:`
+          <div class="op-title">${esc(n?.title||'')}</div>
+          <div class="tag-row">
+            ${tags.map(t=>`<span class="tag ac">${t}</span>`).join('')}
+            ${(m.tags||[]).map(t=>`<span class="tag">#${t}</span>`).join('')}
+          </div>
+          <div class="meta-grid">
+            ${m.cliente?`<div class="mg"><div class="mg-k">Cliente</div><div class="mg-v">${esc(m.cliente)}</div></div>`:''}
+            ${m.prioridad?`<div class="mg"><div class="mg-k">Prioridad</div><div class="mg-v">${esc(m.prioridad)}</div></div>`:''}
+            ${m.fecha?`<div class="mg"><div class="mg-k">Fecha</div><div class="mg-v">${esc(m.fecha)}</div></div>`:''}
+            ${(m.personas||[]).length?`<div class="mg" style="grid-column:1/-1"><div class="mg-k">Personas</div><div class="mg-v">${m.personas.map(p=>p.replace(/\[\[|\]\]/g,'')).join(', ')}</div></div>`:''}
+            ${(m.proyectos||[]).length?`<div class="mg" style="grid-column:1/-1"><div class="mg-k">Proyectos</div><div class="mg-v">${m.proyectos.map(p=>p.replace(/\[\[|\]\]/g,'')).join(', ')}</div></div>`:''}
+          </div>
+          ${stripped?`<div style="border-top:1px solid var(--b);padding-top:16px">
+            <div class="content-md">${esc(stripped)}</div>
+          </div>`:`<div class="es-text">Sin contenido visible</div>`}
+          ${m.fuente_inmutable?`<p style="margin-top:16px;color:var(--tx2)">Fuente original protegida. Usá Memoria → Revisar decisiones y acciones para registrar propuestas separadas.</p>`:`
+          <div style="border-top:1px solid var(--b);padding-top:14px;margin-top:4px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+              <span style="font-size:11px;font-family:'JetBrains Mono',monospace;letter-spacing:.08em;color:var(--tx3);text-transform:uppercase">Sacar el jugo</span>
+              <button class="btn btn-ghost" style="padding:5px 10px;font-size:11px" onclick="runExtractFacts('${esc(n?.id||'')}')" ${S.xfLoading?'disabled':''}>
+                ${S.xfLoading?'<div class="spinner" style="width:10px;height:10px;border-width:1.5px"></div>':'🧠 Sacar el jugo'}
+              </button>
+            </div>
+            ${S.xfError?`<div class="alert-err" style="font-size:12px">${esc(S.xfError)}</div>`:''}
+            <div style="font-size:12px;color:var(--tx3)">Extrae puntos clave y datos duros (decisiones, números, compromisos) y los agrega a la nota.</div>
+          </div>
+          <div style="border-top:1px solid var(--b);padding-top:14px;margin-top:4px">
+            <div style="font-size:11px;font-family:'JetBrains Mono',monospace;letter-spacing:.08em;color:var(--tx3);text-transform:uppercase;margin-bottom:8px">Adjuntar archivo</div>
+            ${renderAttachZone('overlay')}
+          </div>
+          <div style="border-top:1px solid var(--b);padding-top:14px;margin-top:4px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+              <span style="font-size:11px;font-family:'JetBrains Mono',monospace;letter-spacing:.08em;color:var(--tx3);text-transform:uppercase">Conexiones IA</span>
+              <button class="btn btn-ghost" style="padding:5px 10px;font-size:11px" onclick="suggestLinks('${esc(n?.id||'')}')">
+                ${S.semLoading?'<div class="spinner" style="width:10px;height:10px;border-width:1.5px"></div>':'✦ Sugerir'}
+              </button>
+            </div>
+            ${S.semError?`<div class="alert-err" style="font-size:12px">${esc(S.semError)}</div>`:''}
+            ${S.semSuggestions&&S.semSuggestions.note_id===n?.id?`
+              ${!S.semSuggestions.suggestions.length?`<div style="font-size:12px;color:var(--tx3)">No se encontraron conexiones nuevas.</div>`:''}
+              ${S.semSuggestions.suggestions.map((s,i)=>`
+                <div style="display:flex;gap:8px;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--b)">
+                  <input type="checkbox" id="sem-${i}" onchange="S.semSelected=Array.from(document.querySelectorAll('[id^=sem-]:checked')).map(el=>el.dataset.id);render()" data-id="${esc(s.note_id)}" style="margin-top:3px;flex-shrink:0" ${S.semSelected.includes(s.note_id)?'checked':''}>
+                  <label for="sem-${i}" style="cursor:pointer;flex:1">
+                    <div style="font-size:12.5px;font-weight:500;color:var(--tx)">${esc(s.title)}</div>
+                    <div style="font-size:11px;color:var(--tx3);margin-top:2px">${esc(s.reason)}</div>
+                  </label>
+                </div>`).join('')}
+              ${S.semSelected.length?`<button class="btn btn-primary" style="margin-top:10px;width:100%;font-size:12px;padding:8px" onclick="applyLinks('${esc(n?.id||'')}')">
+                Aplicar ${S.semSelected.length} conexión${S.semSelected.length>1?'es':''}
+              </button>`:''}
+            `:''}
+          </div>
+          `}
+        `}
+      </div>
+    </div>
+  </div>`
+}
+
+async function openNote(id){
+  S.openNote={id,title:'...',metadata:{}};S.openLoading=true;render()
+  try{
+    const r=await api(`/notes/${encodeURIComponent(id)}`)
+    if(!r.ok)throw new Error()
+    S.openNote=await r.json()
+  }catch(e){S.openNote=null}
+  S.openLoading=false;render()
+}
+function closeNote(){S.openNote=null;render()}
+
+// ══════════════════════════════════════════════════════════
+// SEARCH
+// ══════════════════════════════════════════════════════════
+let st=null
+function onSearch(q){
+  S.searchQ=q;clearTimeout(st)
+  if(q.trim().length<2){S.searchResults=null;render();return}
+  S.searchLoading=true;render()
+  st=setTimeout(async()=>{
+    try{const r=await api(`/search?q=${encodeURIComponent(q)}&limit=20`);S.searchResults=(await r.json()).results||[]}catch(e){S.searchResults=[]}
+    S.searchLoading=false;render()
+    setTimeout(()=>{const el=document.getElementById('search-inp');if(el){el.focus();el.selectionStart=el.selectionEnd=el.value.length}},10)
+  },400)
+}
+function renderSearch(){
+  if(S.searchLoading)return`<div class="loading"><div class="spinner"></div></div>`
+  if(!S.searchResults?.length)return`<div class="empty-state"><div class="es-icon">⌕</div><div class="es-text">Sin resultados para "${esc(S.searchQ)}"</div></div>`
+  return`<div style="font-size:12px;color:var(--tx3);margin-bottom:14px">${S.searchResults.length} resultado${S.searchResults.length!==1?'s':''} — <em>${esc(S.searchQ)}</em></div>
+    ${S.searchResults.map(r=>`<div class="sr-item" onclick="openNote('${esc(r.id)}')">
+      <div class="sr-title">${esc(r.title)}</div>
+      <div class="sr-meta">${[r.type,r.area].filter(Boolean).join(' · ')} · ${Math.round(r.score*100)}%</div>
+      <div class="sr-excerpt">${esc(r.excerpt)}</div>
+    </div>`).join('')}`
+}
+
+// ══════════════════════════════════════════════════════════
+// NUEVA NOTA
+// ══════════════════════════════════════════════════════════
+function renderNueva(){
+  return`<div class="form-wrap">${
+    S.nnStep==='done'?renderNuevaDone():
+    S.nnStep==='reviewing'?renderNuevaReview():
+    S.nnStep==='manual'?renderNuevaManual():
+    renderNuevaInput()}</div>`
+}
+
+function renderNuevaInput(){
+  return`
+    <div class="section-title">Nueva nota</div>
+    <div class="section-sub">Escribí, pegá o dictá. Gemini clasifica y organiza en el vault.</div>
+    <label class="field-label">Título <span style="font-size:10px;text-transform:none;letter-spacing:0">(opcional)</span></label>
+    <input class="fi" type="text" placeholder="Reunión con cliente, idea, decisión..."
+      value="${esc(S.nnTitle)}" oninput="S.nnTitle=this.value">
+    <label class="field-label">Contenido</label>
+    <textarea class="fi" placeholder="Escribí, pegá texto o grabá con el micrófono..." oninput="S.nnContent=this.value">${esc(S.nnContent)}</textarea>
+    <label class="field-label">Adjuntar archivo <span style="font-size:10px;text-transform:none;letter-spacing:0">(el embed se inserta en el contenido)</span></label>
+    ${renderAttachZone('nnContent')}
+    <label class="field-label" style="margin-top:14px">Micrófono</label>
+    <div class="audio-row">
+      <button class="rec-btn${S.recording?' rec':''}" onclick="toggleRec()">${S.recording?'⏹':'🎤'}</button>
+      <span class="rec-label${S.recording?' active':''}">
+        ${S.transcribing?'Transcribiendo...':S.recording?'Grabando — hablá y apretá stop':'Gemini transcribe el audio automáticamente'}
+      </span>
+      ${S.recording?`<span class="rec-time" id="rec-timer">0:00</span>`:''}
+    </div>
+    ${S.nnError?`<div class="alert-err">${S.nnError}</div>`:''}
+    <button class="btn btn-primary btn-full" onclick="clasificarNueva()" ${!S.nnContent.trim()?'disabled':''}>
+      ✦ Clasificar con Gemini
+    </button>
+    <div class="or-row">o clasificá manualmente</div>
+    <button class="btn btn-ye btn-full" onclick="${S.nnContent.trim()?`S.nnStep='manual';render()`:''}" ${!S.nnContent.trim()?'disabled':''}>
+      Copiar prompt para otra IA
+    </button>
+    <button class="btn btn-ghost btn-full" onclick="quickDraft()" ${!S.nnContent.trim()?'disabled':''}>
+      Guardar en Inbox sin procesar
+    </button>`
+}
+
+function renderNuevaReview(){
+  const p=S.nnParsed
+  return`
+    <button class="btn-back" onclick="S.nnStep='input';render()">‹ volver</button>
+    <div class="section-title">Clasificación de Gemini</div>
+    <div class="review-box">
+      <label class="field-label">Título</label>
+      <input class="fi" style="margin-bottom:8px" value="${esc(p.title)}" oninput="S.nnParsed.title=this.value">
+      ${p.comment?`<div class="gemini-note">"${esc(p.comment)}"</div>`:''}
+      ${renderFields('nnParsed')}
+      <label class="field-label" style="margin-top:12px">Tags</label>
+      <input class="fsel fsel-w" value="${esc((p.tags||[]).join(', '))}"
+        placeholder="tag1, tag2" oninput="S.nnParsed.tags=this.value.split(',').map(t=>t.trim()).filter(Boolean)">
+      <label class="field-label">Contenido</label>
+      <textarea class="fi" style="min-height:100px;margin-bottom:0" oninput="S.nnParsed.content=this.value">${esc(p.content)}</textarea>
+    </div>
+    ${S.nnError?`<div class="alert-err">${S.nnError}</div>`:''}
+    <button class="btn btn-primary btn-full" onclick="confirmarNueva()">
+      ${S.nnConfirming?'<div class="spinner" style="width:13px;height:13px;border-width:1.5px;border-top-color:#080600"></div>':''} Guardar en el vault
+    </button>
+    <p class="hint">Se guardará en la carpeta correcta según el tipo</p>`
+}
+
+function renderNuevaManual(){
+  return`
+    <button class="btn-back" onclick="S.nnStep='input';render()">‹ volver</button>
+    <div class="section-title">Clasificar con otra IA</div>
+    <div class="section-sub">Copiá el prompt, pegalo en ChatGPT, Claude o Gemini, y pegá la respuesta acá.</div>
+    <button class="btn btn-ye btn-full" id="copy-btn" onclick="copyPrompt()">Copiar prompt</button>
+    <label class="field-label" style="margin-top:4px">Pegar respuesta JSON</label>
+    <textarea class="fi" id="manual-resp" style="min-height:160px;font-family:'JetBrains Mono',monospace;font-size:12px"
+      placeholder='{ "title": "...", "tipo": "proyecto", ... }'>${esc(S.nnManualResp||'')}</textarea>
+    ${S.nnError?`<div class="alert-err">${S.nnError}</div>`:''}
+    <button class="btn btn-gemini btn-full" onclick="parseManual()">Previsualizar y confirmar</button>`
+}
+
+function renderNuevaDone(){
+  return`<div class="success">
+    <div class="s-icon">✓</div>
+    <div class="s-title">Nota guardada</div>
+    <div class="s-path">${esc(S.nnResult?.path||'')}</div>
+    ${S.enSuggestions.length?`<div class="alert-sug">
+      <div style="font-family:'Fraunces',serif;font-size:14px;font-weight:600;color:var(--ac);margin-bottom:8px">Personas sin ficha detectadas</div>
+      <div style="font-size:12.5px;color:var(--tx2);margin-bottom:10px">¿Querés crear notas para estas personas?</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${S.enSuggestions.map(n=>`<button class="btn btn-ye" style="padding:5px 12px;font-size:12px" onclick="prefillEnForm('${esc(n)}')">+ ${esc(n)}</button>`).join('')}
+        <button class="btn btn-ghost" style="padding:5px 12px;font-size:12px" onclick="S.enSuggestions=[];render()">Ignorar</button>
+      </div>
+    </div>`:''}
+    <button class="btn btn-ghost" style="max-width:220px;margin:0 auto" onclick="resetNueva()">✦ Nueva nota</button>
+  </div>`
+}
+
+// ══════════════════════════════════════════════════════════
+// ENTIDADES
+// ══════════════════════════════════════════════════════════
+const EN_TABS=[
+  {tipo:'persona',     label:'Personas',      icon:'◎'},
+  {tipo:'cliente',     label:'Clientes',      icon:'◈'},
+  {tipo:'organizacion',label:'Organizaciones',icon:'◆'},
+]
+
+function renderEntidades(){
+  if(S.enStep==='form') return renderEnForm()
+  if(S.enStep==='done') return renderEnDone()
+  return renderEnList()
+}
+
+function renderEnList(){
+  const items=S.enList[S.enTab]||[]
+  const tab=EN_TABS.find(t=>t.tipo===S.enTab)||EN_TABS[0]
+  return`
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div>
+        <div class="section-title">Entidades</div>
+        <div style="font-size:13px;color:var(--tx2)">Personas, clientes y organizaciones del vault</div>
+      </div>
+      <button class="btn btn-primary" style="padding:8px 16px;font-size:13px" onclick="startEnForm()">+ Nueva</button>
+    </div>
+    <div class="af-row" style="margin-bottom:20px">
+      ${EN_TABS.map(t=>`<button class="af${S.enTab===t.tipo?' on':''}" onclick="setEnTab('${t.tipo}')">${t.icon} ${t.label} <span style="color:var(--tx3);font-size:10px">(${(S.enList[t.tipo]||[]).length})</span></button>`).join('')}
+    </div>
+    ${S.enLoading?`<div class="loading"><div class="spinner"></div></div>`:''}
+    ${S.enError?`<div class="alert-err">${S.enError}</div>`:''}
+    ${!S.enLoading&&!items.length?`<div class="empty-state"><div class="es-icon">${tab.icon}</div><div class="es-text">No hay ${tab.label.toLowerCase()} todavía</div></div>`:''}
+    <div class="entity-grid">
+      ${items.map(n=>{
+        const m=n.metadata||{}
+        const cleanTitle=n.title.replace(/\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g,'$1')
+        return`<div class="en-card">
+          <div class="en-card-head" style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+            <div class="en-card-name" style="cursor:pointer;flex:1" onclick="openNote('${esc(n.id)}')">${esc(cleanTitle)}</div>
+            <button onclick="event.stopPropagation();editEn('${esc(n.id)}')" style="background:none;border:none;cursor:pointer;color:var(--tx3);font-size:12px;padding:2px 4px;border-radius:4px;transition:color .15s;flex-shrink:0" onmouseover="this.style.color='var(--ac)'" onmouseout="this.style.color='var(--tx3)'" title="Editar">✎</button>
+          </div>
+          <div class="en-card-body" onclick="openNote('${esc(n.id)}')">
+            ${m.rol?`<div class="en-card-role">${esc(m.rol)}</div>`:''}
+            ${m.organizacion||m.cliente?`<div class="en-card-org">${esc((m.organizacion||m.cliente||'').replace(/\[\[|\]\]/g,''))}</div>`:''}
+            ${(m.tags||[]).length?`<div style="margin-top:8px;display:flex;gap:4px;flex-wrap:wrap">${m.tags.map(t=>`<span class="tag">#${t}</span>`).join('')}</div>`:''}
+          </div>
+        </div>`}).join('')}
+    </div>
+    ${S.enSuggestions.length?`<div class="alert-sug">
+      <div style="font-family:'Fraunces',serif;font-size:14px;font-weight:600;color:var(--ac);margin-bottom:8px">Personas sin ficha en el vault</div>
+      <div style="font-size:12.5px;color:var(--tx2);margin-bottom:10px">Detectadas en reuniones y notas. ¿Las creamos?</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${S.enSuggestions.map(n=>`<button class="btn btn-ye" style="padding:5px 12px;font-size:12px" onclick="prefillEnForm('${esc(n)}')">+ ${esc(n)}</button>`).join('')}
+        <button class="btn btn-ghost" style="padding:5px 12px;font-size:12px" onclick="S.enSuggestions=[];render()">Ignorar</button>
+      </div>
+    </div>`:''}`
+}
+
+function renderEnForm(){
+  const f=S.enForm
+  const editing=!!S.enEditing
+  return`
+    <button class="btn-back" onclick="S.enStep='list';S.enEditing=null;render()">‹ Entidades</button>
+    <div class="form-wrap">
+      <div class="section-title">${editing?'Editar entidad':'Nueva entidad'}</div>
+      <div class="section-sub">Personas, clientes u organizaciones que aparecen en tus notas.</div>
+      <label class="field-label">Tipo</label>
+      <div class="af-row" style="margin-bottom:16px">
+        ${EN_TABS.map(t=>`<button class="af${f.tipo===t.tipo?' on':''}" onclick="S.enForm.tipo='${t.tipo}';render()">${t.icon} ${t.label}</button>`).join('')}
+      </div>
+      <label class="field-label">Nombre *</label>
+      <input class="fi" type="text" placeholder="Nombre completo"
+        value="${esc(f.title)}" oninput="S.enForm.title=this.value">
+      ${f.tipo==='persona'?`
+        <label class="field-label">Organización</label>
+        <input class="fi" type="text" placeholder="Empresa o institución"
+          value="${esc(f.organizacion)}" oninput="S.enForm.organizacion=this.value">
+        <label class="field-label">Cliente asociado</label>
+        <input class="fi" type="text" placeholder="Si ya existe como cliente en el vault"
+          value="${esc(f.cliente)}" oninput="S.enForm.cliente=this.value">
+        <label class="field-label">Rol / Cargo</label>
+        <input class="fi" type="text" placeholder="Director, Socio, Desarrollador..."
+          value="${esc(f.rol)}" oninput="S.enForm.rol=this.value">
+      `:`
+        <label class="field-label">Área</label>
+        <select class="fi" onchange="S.enForm.area=this.value">
+          ${['Laboral','Personal','Familia','Amigos','Apostolado'].map(a=>`<option${a===f.area?' selected':''}>${a}</option>`).join('')}
+        </select>
+      `}
+      <label class="field-label">Tags</label>
+      <input class="fi" type="text" placeholder="tag1, tag2, tag3"
+        value="${esc(f.tags)}" oninput="S.enForm.tags=this.value">
+      <label class="field-label">Notas / Contexto</label>
+      <textarea class="fi" placeholder="Rol, relación, cómo se conocieron, notas importantes..."
+        oninput="S.enForm.content=this.value">${esc(f.content)}</textarea>
+      ${S.enError2?`<div class="alert-err">${S.enError2}</div>`:''}
+      <button class="btn btn-primary btn-full" onclick="${S.enEditing?'saveEnEdit()':'guardarEntidad()'}">
+        ${S.enConfirming?'<div class="spinner" style="width:13px;height:13px;border-width:1.5px;border-top-color:#080600"></div>':''}
+        ${S.enEditing?'Guardar cambios':'Guardar entidad'}
+      </button>
+    </div>`
+}
+
+function renderEnDone(){
+  return`<div class="success">
+    <div class="s-icon">✓</div>
+    <div class="s-title">Entidad guardada</div>
+    <div class="s-path">${esc(S.enResult?.path||'')}</div>
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+      <button class="btn btn-ghost" style="max-width:180px" onclick="resetEn()">+ Otra</button>
+      <button class="btn btn-ghost" style="max-width:180px" onclick="S.enStep='list';loadEntidades();render()">Ver entidades</button>
+    </div>
+  </div>`
+}
+
+// ══════════════════════════════════════════════════════════
+// INBOX
+// ══════════════════════════════════════════════════════════
+function renderInbox(){
+  return`<div class="form-wrap">${
+    S.ibStep==='done'?renderIbDone():
+    S.ibStep==='reviewing'?renderIbReview():
+    S.ibStep==='manual'?renderIbManual():
+    S.ibStep==='read'&&S.ibNote?renderIbRead():
+    renderIbList()}</div>`
+}
+function renderPaProgress(){
+  const total=S.paTotal||S.ibDrafts.length||1
+  const pct=Math.round(S.paDone/total*100)
+  return`<div style="background:var(--bg2);border:1px solid var(--b);border-radius:var(--r);padding:14px;margin-bottom:16px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <span style="font-size:12px;color:var(--tx2)">${S.paLoading?`Procesando ${S.paDone} / ${S.paTotal||'?'}...`:`${S.paDone} nota${S.paDone!==1?'s':''} procesadas`}</span>
+      ${!S.paLoading?`<button style="background:none;border:none;cursor:pointer;color:var(--tx3);font-size:12px;padding:0 2px" onclick="S.paResults=[];S.paError=null;render()">✕</button>`:''}
+    </div>
+    <div style="background:var(--b);border-radius:4px;height:3px;overflow:hidden">
+      <div style="height:100%;background:var(--pu);width:${pct}%;transition:width .3s"></div>
+    </div>
+    ${S.paError?`<div class="alert-err" style="margin-top:10px;font-size:12px">${esc(S.paError)}</div>`:''}
+    ${S.paResults.length?`<div style="margin-top:10px;display:flex;flex-direction:column;gap:5px">
+      ${S.paResults.map(r=>`<div style="display:flex;align-items:center;gap:8px;font-size:12px">
+        <span style="color:${r.error?'var(--rd)':'var(--ac2)'};flex-shrink:0;width:10px">${r.error?'✗':'✓'}</span>
+        <span style="color:var(--tx2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.title)}</span>
+        ${r.tipo?`<span style="color:var(--tx3);font-family:'JetBrains Mono',monospace;font-size:10px;flex-shrink:0">${r.tipo}</span>`:''}
+      </div>`).join('')}
+    </div>`:''}
+  </div>`
+}
+function renderIbList(){
+  return`
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:${S.paLoading||S.paResults.length?'12px':'20px'}">
+      <div><div class="section-title">Inbox</div><div style="font-size:13px;color:var(--tx2)">Borradores pendientes de clasificar</div></div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn btn-ghost" style="padding:7px 14px;font-size:12px" onclick="loadInbox().then(render)" title="Actualizar">↺</button>
+        ${S.ibDrafts.length&&!S.paLoading?`<button class="btn btn-gemini" style="padding:7px 14px;font-size:12px" onclick="processAllInbox()">✦ Procesar todo</button>`:''}
+        ${S.paLoading?`<div style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--pu)"><div class="spinner" style="width:11px;height:11px;border-width:1.5px;border-top-color:var(--pu)"></div>Procesando...</div>`:''}
+      </div>
+    </div>
+    ${S.paLoading||S.paResults.length?renderPaProgress():''}
+    ${S.ibLoading?`<div class="loading"><div class="spinner"></div></div>`:''}
+    ${S.ibError?`<div class="alert-err">${S.ibError}</div>`:''}
+    ${!S.ibLoading&&!S.ibDrafts.length?`<div class="empty-state"><div class="es-icon">▽</div><div class="es-text">Inbox vacío</div></div>`:''}
+    ${S.ibDrafts.map((d,i)=>`
+      <div style="background:var(--bg2);border:1px solid var(--b);border-radius:var(--r);padding:13px 15px;cursor:pointer;margin-bottom:8px;display:flex;gap:10px;align-items:flex-start;transition:border-color .15s" onmouseover="this.style.borderColor='var(--bb)'" onmouseout="this.style.borderColor='var(--b)'" onclick="selectDraft(${i})">
+        <span style="color:var(--tx3);font-size:14px;flex-shrink:0">◇</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-family:'Fraunces',serif;font-size:14px;font-weight:600;margin-bottom:3px">${esc(d.title)}</div>
+          ${d.excerpt?`<div style="font-size:12px;color:var(--tx3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(d.excerpt)}</div>`:''}
+        </div>
+        <span style="color:var(--tx3)">→</span>
+      </div>`).join('')}`
+}
+function renderIbRead(){
+  const n=S.ibNote
+  return`
+    <button class="btn-back" onclick="S.ibStep='list';render()">‹ Inbox</button>
+    <div class="section-title" style="font-size:16px">${esc(n.title)}</div>
+    <div style="background:var(--bg2);border:1px solid var(--b);border-radius:var(--r);padding:12px;max-height:200px;overflow-y:auto;font-family:'JetBrains Mono',monospace;font-size:11.5px;line-height:1.75;color:var(--tx2);white-space:pre-wrap;margin:14px 0">${esc(n.content||n.excerpt||'(sin contenido)')}</div>
+    <button class="btn btn-gemini btn-full" onclick="clasificarInbox()">✦ Clasificar con Gemini</button>
+    <div class="or-row">o</div>
+    <button class="btn btn-ye btn-full" onclick="S.ibStep='manual';render()">Copiar prompt para otra IA</button>
+    <button class="btn btn-ghost btn-full" style="margin-top:8px;color:var(--rd)" onclick="discardDraft()">Descartar</button>`
+}
+async function discardDraft(){
+  if(!confirm('¿Descartar este borrador? Se archiva y deja de aparecer en el Inbox.'))return
+  try{
+    const r=await api(`/notes/${encodeURIComponent(S.ibNote.id)}`,{method:'PATCH',body:JSON.stringify({estado:'archivado'})})
+    if(!r.ok)throw new Error(await r.text())
+    resetIb()
+  }catch(e){S.ibError=e.message;render()}
+}
+function renderIbReview(){
+  const p=S.ibParsed
+  return`
+    <button class="btn-back" onclick="S.ibStep='read';render()">‹ volver</button>
+    <div class="section-title" style="font-size:16px">Clasificación</div>
+    <div class="review-box">
+      <label class="field-label">Título</label>
+      <input class="fi" style="margin-bottom:8px" value="${esc(p.title)}" oninput="S.ibParsed.title=this.value">
+      ${p.comment?`<div class="gemini-note">"${esc(p.comment)}"</div>`:''}
+      ${renderFields('ibParsed')}
+      <label class="field-label" style="margin-top:12px">Tags</label>
+      <input class="fsel fsel-w" value="${esc((p.tags||[]).join(', '))}" oninput="S.ibParsed.tags=this.value.split(',').map(t=>t.trim()).filter(Boolean)">
+      <label class="field-label">Contenido</label>
+      <textarea class="fi" style="min-height:100px;margin-bottom:0" oninput="S.ibParsed.content=this.value">${esc(p.content)}</textarea>
+    </div>
+    ${S.ibError?`<div class="alert-err">${S.ibError}</div>`:''}
+    <button class="btn btn-primary btn-full" onclick="confirmarInbox()">
+      ${S.ibConfirming?'<div class="spinner" style="width:13px;height:13px;border-width:1.5px;border-top-color:#080600"></div>':''} Guardar en el vault
+    </button>
+    <p class="hint">El borrador se archivará automáticamente</p>`
+}
+function renderIbManual(){
+  return`
+    <button class="btn-back" onclick="S.ibStep='read';render()">‹ volver</button>
+    <div class="section-title" style="font-size:16px">Clasificar con otra IA</div>
+    <button class="btn btn-ye btn-full" id="copy-btn-ib" onclick="copyPromptIb()">Copiar prompt</button>
+    <label class="field-label" style="margin-top:4px">Pegar respuesta JSON</label>
+    <textarea class="fi" id="ib-manual-resp" style="min-height:160px;font-family:'JetBrains Mono',monospace;font-size:12px"
+      placeholder='{ "title": "...", "tipo": "...", ... }'>${esc(S.ibManualResp||'')}</textarea>
+    ${S.ibError?`<div class="alert-err">${S.ibError}</div>`:''}
+    <button class="btn btn-gemini btn-full" onclick="parseIbManual()">Previsualizar y confirmar</button>`
+}
+function renderIbDone(){
+  return`<div class="success">
+    <div class="s-icon">✓</div>
+    <div class="s-title">Nota guardada</div>
+    <div class="s-path">${esc(S.ibResult?.path||'')}</div>
+    <button class="btn btn-ghost" style="max-width:220px;margin:0 auto" onclick="resetIb()">↺ Ver más borradores</button>
+  </div>`
+}
+
+// ══════════════════════════════════════════════════════════
+// REUNIONES (NotebookLM)
+// ══════════════════════════════════════════════════════════
+function renderReuniones(){
+  return`<div class="form-wrap">${
+    S.rnStep==='done'?renderRnDone():
+    S.rnStep==='importing'?renderRnImporting():
+    S.rnStep==='sources'?renderRnSources():
+    renderRnNotebooks()}</div>`
+}
+function renderRnNotebooks(){
+  return`
+    <div class="section-title">Reuniones</div>
+    <div class="section-sub">Traé la transcripción completa de una reunión grabada en NotebookLM.</div>
+    ${S.rnNotebooksLoading?`<div class="loading"><div class="spinner"></div></div>`:''}
+    ${S.rnError?`<div class="alert-err">${esc(S.rnError)}</div>`:''}
+    ${!S.rnNotebooksLoading&&!S.rnNotebooks.length&&!S.rnError?`<div class="empty-state"><div class="es-icon">⏺</div><div class="es-text">No se encontraron notebooks</div></div>`:''}
+    ${S.rnNotebooks.map(nb=>`
+      <div style="background:var(--bg2);border:1px solid var(--b);border-radius:var(--r);padding:13px 15px;cursor:pointer;margin-bottom:8px;display:flex;gap:10px;align-items:center;transition:border-color .15s" onmouseover="this.style.borderColor='var(--bb)'" onmouseout="this.style.borderColor='var(--b)'" onclick="selectRnNotebook('${esc(nb.id)}','${esc(nb.title.replace(/'/g,"\\'"))}')">
+        <span style="color:var(--tx3);font-size:14px;flex-shrink:0">⏺</span>
+        <div style="flex:1;min-width:0;font-family:'Fraunces',serif;font-size:14px;font-weight:600">${esc(nb.title||'(sin título)')}</div>
+        <span style="color:var(--tx3)">→</span>
+      </div>`).join('')}`
+}
+function renderRnSources(){
+  return`
+    <button class="btn-back" onclick="S.rnStep='notebooks';render()">‹ Notebooks</button>
+    <div class="section-title" style="font-size:16px">${esc(S.rnNotebookTitle)}</div>
+    <div class="section-sub">Elegí qué audios/videos son reuniones reales. Solo se muestran fuentes de audio/video.</div>
+    <label class="field-label">Área</label>
+    <div class="af-row" style="margin-bottom:14px">
+      ${['Laboral','Personal','Familia','Amigos','Apostolado'].map(a=>`<button class="af${S.rnArea===a?' on':''}" onclick="S.rnArea='${a}';render()">${a}</button>`).join('')}
+    </div>
+    ${S.rnSourcesLoading?`<div class="loading"><div class="spinner"></div></div>`:''}
+    ${S.rnError?`<div class="alert-err">${esc(S.rnError)}</div>`:''}
+    ${!S.rnSourcesLoading&&!S.rnSources.length&&!S.rnError?`<div class="empty-state"><div class="es-icon">⏺</div><div class="es-text">Este notebook no tiene audios ni videos</div></div>`:''}
+    ${S.rnSources.map(s=>`
+      <label style="display:flex;gap:10px;align-items:center;background:var(--bg2);border:1px solid var(--b);border-radius:var(--r);padding:11px 14px;cursor:pointer;margin-bottom:7px">
+        <input type="checkbox" ${S.rnSelected.includes(s.id)?'checked':''} onchange="toggleRnSource('${esc(s.id)}')">
+        <span style="flex:1;min-width:0;font-size:13px">${esc(s.title||'(sin título)')}</span>
+      </label>`).join('')}
+    ${S.rnSources.length?`<button class="btn btn-primary btn-full" style="margin-top:10px" onclick="importReuniones()" ${!S.rnSelected.length?'disabled':''}>
+      ⏺ Importar ${S.rnSelected.length||''} reunión${S.rnSelected.length!==1?'es':''}
+    </button>`:''}`
+}
+function renderRnImporting(){
+  return`
+    <div class="section-title" style="font-size:16px">Importando...</div>
+    ${renderPaProgress()}`
+}
+function renderRnDone(){
+  const ok=S.paResults.filter(r=>!r.error).length
+  const fail=S.paResults.filter(r=>r.error).length
+  return`<div class="success">
+    <div class="s-icon">✓</div>
+    <div class="s-title">${ok} reunión${ok!==1?'es':''} importada${ok!==1?'s':''}${fail?`, ${fail} con error`:''}</div>
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+      <button class="btn btn-ghost" style="max-width:200px" onclick="resetReuniones()">⏺ Importar otra</button>
+      <button class="btn btn-ghost" style="max-width:200px" onclick="setView('inbox')">Ver en Inbox</button>
+    </div>
+  </div>`
+}
+async function loadReunionesNotebooks(){
+  S.rnNotebooksLoading=true;S.rnError=null;render()
+  try{
+    const r=await api('/notebooklm/notebooks')
+    if(!r.ok)throw new Error(await r.text())
+    S.rnNotebooks=await r.json()
+  }catch(e){S.rnError=e.message}
+  S.rnNotebooksLoading=false;render()
+}
+async function selectRnNotebook(id,title){
+  S.rnNotebookId=id;S.rnNotebookTitle=title;S.rnStep='sources'
+  S.rnSelected=[];S.rnSources=[];S.rnSourcesLoading=true;S.rnError=null;render()
+  try{
+    const r=await api(`/notebooklm/notebooks/${encodeURIComponent(id)}/sources`)
+    if(!r.ok)throw new Error(await r.text())
+    S.rnSources=(await r.json()).filter(s=>s.type==='media')
+  }catch(e){S.rnError=e.message}
+  S.rnSourcesLoading=false;render()
+}
+function toggleRnSource(id){
+  S.rnSelected=S.rnSelected.includes(id)?S.rnSelected.filter(x=>x!==id):[...S.rnSelected,id]
+  render()
+}
+async function importReuniones(){
+  const sources=S.rnSources.filter(s=>S.rnSelected.includes(s.id)).map(s=>({source_id:s.id,title:s.title,tags:[]}))
+  if(!sources.length)return
+  S.paLoading=true;S.paTotal=sources.length;S.paDone=0;S.paResults=[];S.paError=null;S.rnStep='importing';render()
+  try{
+    const r=await api('/notebooklm/import',{method:'POST',body:JSON.stringify({notebook_id:S.rnNotebookId,area:S.rnArea,sources})})
+    if(!r.ok)throw new Error(await r.text())
+    const d=await r.json()
+    S.paResults=(d.results||[]).map(x=>({title:x.title,tipo:'reunion',error:x.error,path:x.path,ok:x.ok,id:x.id}))
+    S.paDone=S.paResults.length
+    S.rnStep='done'
+    loadAll()
+    extractFactsForImported(S.paResults)
+  }catch(e){S.paError=e.message;S.rnStep='sources'}
+  S.paLoading=false;render()
+}
+function resetReuniones(){S.rnStep='notebooks';S.rnNotebookId=null;S.rnSources=[];S.rnSelected=[];S.paResults=[];render()}
+
+// ══════════════════════════════════════════════════════════
+// SHARED FIELDS
+// ══════════════════════════════════════════════════════════
+function renderFields(key){
+  const p=S[key]
+  const sel=(f,opts)=>`<select class="fsel" onchange="S.${key}.${f}=this.value">${opts.map(o=>`<option${o===p[f]?' selected':''}>${o}</option>`).join('')}</select>`
+  return`
+    <hr style="border:none;border-top:1px solid var(--b);margin:10px 0">
+    <div class="field-row"><span class="fk">Tipo</span>${sel('tipo',['nota','proyecto','accion','decision','reunion','registro','recurso','idea','persona','cliente'])}</div>
+    <div class="field-row"><span class="fk">Área</span>${sel('area',['Laboral','Personal','Familia','Amigos','Apostolado'])}</div>
+    <div class="field-row"><span class="fk">Estado</span>${sel('estado',['activo','en_proceso','pendiente','cerrado','borrador','archivado'])}</div>
+    <div class="field-row"><span class="fk">Sensibilidad</span>${sel('sensibilidad',['normal','interno','privado','secreto'])}</div>
+    <div class="field-row"><span class="fk">IA permiso</span>${sel('ia_permiso',['allow','summary_only','deny'])}</div>
+    <div class="field-row"><span class="fk">Cliente</span><input class="fsel" style="width:160px" value="${esc(p.cliente||'')}" oninput="S.${key}.cliente=this.value"></div>`
+}
+
+// ══════════════════════════════════════════════════════════
+// AUDIO
+// ══════════════════════════════════════════════════════════
+async function toggleRec(){if(S.recording)stopRec();else await startRec()}
+async function startRec(){
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({audio:true})
+    const mime=MediaRecorder.isTypeSupported('audio/webm;codecs=opus')?'audio/webm;codecs=opus':MediaRecorder.isTypeSupported('audio/webm')?'audio/webm':'audio/mp4'
+    S.recorder=new MediaRecorder(stream,{mimeType:mime});const chunks=[]
+    S.recorder.ondataavailable=e=>{if(e.data.size>0)chunks.push(e.data)}
+    S.recorder.onstop=async()=>{stream.getTracks().forEach(t=>t.stop());await transcribe(new Blob(chunks,{type:mime}),mime)}
+    S.recorder.start();S.recording=true;S.recSecs=0
+    S.recTimer=setInterval(()=>{S.recSecs++;const el=document.getElementById('rec-timer');if(el)el.textContent=`${Math.floor(S.recSecs/60)}:${String(S.recSecs%60).padStart(2,'0')}`,1000})
+    render()
+  }catch(e){S.nnError='Micrófono: '+e.message;render()}
+}
+function stopRec(){clearInterval(S.recTimer);S.recording=false;S.transcribing=true;S.recorder?.stop();render()}
+async function transcribe(blob,mime){
+  try{
+    const b64=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(blob)})
+    const r=await fetch('/api/ai/transcribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({audioBase64:b64,mimeType:mime.split(';')[0]})})
+    if(!r.ok)throw new Error()
+    const d=await r.json();const text=d.text||d.transcription||''
+    S.nnContent=S.nnContent?S.nnContent+'\n\n'+text:text
+  }catch(e){S.nnError='Error al transcribir'}
+  S.transcribing=false;render()
+}
+
+// ══════════════════════════════════════════════════════════
+// NUEVA NOTA ACTIONS
+// ══════════════════════════════════════════════════════════
+function buildPrompt(title,content){
+  return`Sos mi asistente de organización personal para PachiMind, mi vault de Obsidian.
+
+Analizá esta nota y devolvé ÚNICAMENTE un JSON válido (sin markdown, sin texto extra).
+
+Tipos: nota | proyecto | accion | decision | reunion | registro | recurso | idea | persona | cliente
+Áreas: Laboral | Personal | Familia | Amigos | Apostolado
+Estados: activo | en_proceso | pendiente | cerrado | borrador
+Sensibilidad: normal | interno | privado | secreto
+IA permiso: allow | summary_only | deny
+
+{
+  "title": "título descriptivo",
+  "tipo": "...", "area": "...", "estado": "activo",
+  "sensibilidad": "normal", "ia_permiso": "allow",
+  "tags": [], "cliente": "", "personas": [],
+  "content": "contenido mejorado en Markdown",
+  "comment": "explicación breve"
+}
+
+Título: ${title||'(sin título)'}
+${content}`
+}
+
+function parseGemini(raw){
+  const d=typeof raw==='object'&&raw!==null?raw:JSON.parse((String(raw).match(/\{[\s\S]*\}/)||['{}'])[0])
+  const fallbackContent=S.view==='nueva'?S.nnContent:S.ibNote?.content||S.ibNote?.excerpt||''
+  const fallbackTitle=S.view==='nueva'?S.nnTitle:S.ibNote?.title||''
+  return{
+    title:d.suggested_title||d.title||fallbackTitle||'',
+    tipo:d.suggested_tipo||d.tipo||'nota',
+    area:d.suggested_area||d.area||'Laboral',
+    estado:d.suggested_estado||d.estado||'activo',
+    sensibilidad:d.sensibilidad||'normal',
+    ia_permiso:d.ia_permiso||'allow',
+    tags:d.suggested_tags||d.tags||[],
+    cliente:d.suggested_cliente||d.cliente||'',
+    personas:d.suggested_personas||d.personas||[],
+    content:d.suggested_content||d.content||fallbackContent||'',
+    comment:d.comment||'',
+  }
+}
+
+async function clasificarNueva(){
+  S.nnError=null
+  const btn=document.querySelector('#app .btn-primary')
+  if(btn){btn.disabled=true;btn.innerHTML='<div class="spinner" style="width:13px;height:13px;border-width:1.5px;border-top-color:#080600"></div> Clasificando...'}
+  try{
+    const r=await fetch('/api/ai/review-note',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:null,title:S.nnTitle,content:S.nnContent})})
+    if(!r.ok)throw new Error(`Error ${r.status}`)
+    S.nnParsed=parseGemini(await r.json())
+    if(!S.nnParsed.content?.trim())S.nnParsed.content=S.nnContent
+    S.nnStep='reviewing'
+  }catch(e){S.nnError=e.message}
+  render()
+}
+
+async function confirmarNueva(){
+  S.nnConfirming=true;S.nnError=null;render()
+  try{
+    const r=await api('/notes',{method:'POST',body:JSON.stringify({title:S.nnParsed.title,tipo:S.nnParsed.tipo,area:S.nnParsed.area,estado:S.nnParsed.estado,content:S.nnParsed.content,tags:S.nnParsed.tags,cliente:S.nnParsed.cliente||null,personas:S.nnParsed.personas})})
+    if(!r.ok){const e=await r.json().catch(()=>{});throw new Error(e?.detail||e?.error||`Error ${r.status}`)}
+    S.nnResult=await r.json();S.nnStep='done'
+    loadAll()
+    if(S.nnParsed?.personas?.length){await loadEntidades()}
+  }catch(e){S.nnError=e.message}
+  S.nnConfirming=false;render()
+}
+
+async function quickDraft(){
+  try{
+    await api('/inbox/draft',{method:'POST',body:JSON.stringify({title:S.nnTitle||'Nota sin título',content:S.nnContent,area:'Laboral',tipo:'nota'})})
+    S.nnContent='';S.nnTitle='';await loadInbox();setView('inbox')
+  }catch(e){S.nnError=e.message;render()}
+}
+
+async function copyPrompt(){
+  await navigator.clipboard.writeText(buildPrompt(S.nnTitle,S.nnContent)).catch(()=>{})
+  const btn=document.getElementById('copy-btn')
+  if(btn){btn.textContent='✓ Copiado';setTimeout(()=>{if(btn)btn.textContent='Copiar prompt'},2000)}
+}
+
+function parseManual(){
+  const raw=document.getElementById('manual-resp')?.value||''
+  S.nnManualResp=raw;S.nnError=null
+  try{S.nnParsed=parseGemini(raw);if(!S.nnParsed.content?.trim())S.nnParsed.content=S.nnContent;S.nnStep='reviewing';render()}
+  catch(e){S.nnError=e.message;render()}
+}
+
+function resetNueva(){S.nnStep='input';S.nnTitle='';S.nnContent='';S.nnParsed=null;S.nnResult=null;S.nnError=null;S.nnManualResp='';render()}
+
+// ══════════════════════════════════════════════════════════
+// INBOX ACTIONS
+// ══════════════════════════════════════════════════════════
+async function selectDraft(i){
+  S.ibNote=null;S.ibParsed=null;S.ibError=null;S.ibStep='list';S.ibLoading=true;render()
+  try{const r=await api(`/notes/${encodeURIComponent(S.ibDrafts[i].id)}`);if(!r.ok)throw new Error();S.ibNote=await r.json();S.ibStep='read'}
+  catch(e){S.ibError=e.message}
+  S.ibLoading=false;render()
+}
+async function clasificarInbox(){
+  const btn=document.querySelector('#app .btn-gemini')
+  if(btn){btn.disabled=true;btn.textContent='Clasificando...'}
+  try{
+    const r=await fetch('/api/ai/review-note',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:S.ibNote.id,title:S.ibNote.title,content:S.ibNote.content||S.ibNote.excerpt||''})})
+    if(!r.ok)throw new Error();S.ibParsed=parseGemini(await r.json())
+    if(!S.ibParsed.content?.trim())S.ibParsed.content=S.ibNote.content||S.ibNote.excerpt||''
+    S.ibStep='reviewing'
+  }catch(e){S.ibError=e.message;S.ibStep='read'}
+  render()
+}
+async function confirmarInbox(){
+  S.ibConfirming=true;S.ibError=null;render()
+  try{
+    const r=await api('/notes',{method:'POST',body:JSON.stringify({title:S.ibParsed.title,tipo:S.ibParsed.tipo,area:S.ibParsed.area,estado:S.ibParsed.estado,content:S.ibParsed.content,tags:S.ibParsed.tags,cliente:S.ibParsed.cliente||null,personas:S.ibParsed.personas,source_draft_id:S.ibNote.id})})
+    if(!r.ok){const e=await r.json().catch(()=>{});throw new Error(e?.detail||e?.error||`Error ${r.status}`)}
+    S.ibResult=await r.json();S.ibStep='done';loadAll()
+  }catch(e){S.ibError=e.message}
+  S.ibConfirming=false;render()
+}
+async function copyPromptIb(){
+  await navigator.clipboard.writeText(buildPrompt(S.ibNote.title,S.ibNote.content||S.ibNote.excerpt||'')).catch(()=>{})
+  const btn=document.getElementById('copy-btn-ib')
+  if(btn){btn.textContent='✓ Copiado';setTimeout(()=>{if(btn)btn.textContent='Copiar prompt'},2000)}
+}
+function parseIbManual(){
+  const raw=document.getElementById('ib-manual-resp')?.value||''
+  S.ibManualResp=raw;S.ibError=null
+  try{S.ibParsed=parseGemini(raw);if(!S.ibParsed.content?.trim())S.ibParsed.content=S.ibNote.content||S.ibNote.excerpt||'';S.ibStep='reviewing';render()}
+  catch(e){S.ibError=e.message;render()}
+}
+function resetIb(){S.ibStep='list';S.ibNote=null;S.ibParsed=null;S.ibResult=null;S.ibError=null;loadInbox();render()}
+async function processAllInbox(){
+  S.paLoading=true;S.paTotal=0;S.paDone=0;S.paResults=[];S.paError=null;render()
+  try{
+    const h=S.token?{'Authorization':`Bearer ${S.token}`}:{}
+    const r=await fetch('/api/ai/process-all',{headers:h})
+    if(!r.ok)throw new Error(`Error ${r.status}`)
+    const reader=r.body.getReader();const dec=new TextDecoder();let buf=''
+    while(true){
+      const{done,value}=await reader.read();if(done)break
+      buf+=dec.decode(value,{stream:true})
+      const lines=buf.split('\n');buf=lines.pop()
+      for(const line of lines){
+        if(!line.startsWith('data:'))continue
+        try{
+          const d=JSON.parse(line.slice(5).trim())
+          if(d.type==='start'){S.paTotal=d.total}
+          else if(d.type==='saved'){S.paDone++;S.paResults.push(d)}
+          else if(d.type==='error'){S.paDone++;S.paResults.push({...d,tipo:''})}
+          else if(d.type==='done'){S.paLoading=false;loadAll()}
+          render()
+        }catch(_){}
+      }
+    }
+  }catch(e){S.paError=e.message}
+  S.paLoading=false;render()
+}
+
+// ══════════════════════════════════════════════════════════
+// ENTIDADES ACTIONS
+// ══════════════════════════════════════════════════════════
+async function loadEntidades(){
+  S.enLoading=true;S.enError=null
+  try{
+    const tipos=['persona','cliente','organizacion']
+    const res=await Promise.all(tipos.map(t=>api(`/notes?tipo=${t}&per_page=100`).then(r=>r.json())))
+    tipos.forEach((t,i)=>{S.enList[t]=res[i].results||[]})
+    await detectEnSuggestions()
+  }catch(e){S.enError=e.message}
+  S.enLoading=false
+}
+async function detectEnSuggestions(){
+  try{
+    const r=await api('/notes?tipo=reunion&per_page=20');const notas=await r.json()
+    const enVault=new Set((S.enList['persona']||[]).map(n=>n.title.split('—')[0].split('-')[0].trim().toLowerCase()))
+    const sin=new Set()
+    for(const n of(notas.results||[])){
+      for(const p of(n.metadata?.personas||[])){
+        const clean=p.replace(/\[\[|\]\]/g,'').split('—')[0].split('-')[0].trim()
+        if(clean&&!['pablo','pachi'].includes(clean.toLowerCase())&&!enVault.has(clean.toLowerCase()))sin.add(clean)
+      }
+    }
+    S.enSuggestions=[...sin]
+  }catch(e){}
+}
+function setEnTab(t){S.enTab=t;render()}
+function startEnForm(){S.enForm={title:'',tipo:S.enTab==='organizacion'?'organizacion':S.enTab,area:'Laboral',organizacion:'',cliente:'',rol:'',tags:'',content:''};S.enError2=null;S.enEditing=null;S.enStep='form';render()}
+async function editEn(noteId){
+  try{
+    const r=await api(`/notes/${encodeURIComponent(noteId)}`)
+    if(!r.ok)throw new Error()
+    const n=await r.json()
+    const m=n.metadata||{}
+    const body=n.content||''
+    const stripped=body.replace(/^---[\s\S]*?---\n?/,'').trim()
+    S.enEditing=noteId
+    S.enForm={
+      title:n.title.replace(/\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g,'$1'),
+      tipo:m.tipo||'persona',
+      area:m.area||'Laboral',
+      organizacion:m.organizacion||'',
+      cliente:(m.cliente||'').replace(/\[\[|\]\]/g,''),
+      rol:m.rol||'',
+      tags:(m.tags||[]).join(', '),
+      content:stripped,
+    }
+    S.enError2=null;S.enStep='form';setView('entidades')
+  }catch(e){alert('Error cargando entidad')}
+}
+async function saveEnEdit(){
+  const f=S.enForm
+  if(!f.title.trim()){S.enError2='El nombre es requerido';render();return}
+  S.enConfirming=true;S.enError2=null;render()
+  try{
+    const r=await api(`/notes/${encodeURIComponent(S.enEditing)}`,{
+      method:'PATCH',
+      body:JSON.stringify({
+        tipo:f.tipo,area:f.area,
+        organizacion:f.organizacion||null,
+        cliente:f.cliente||null,
+        rol:f.rol||null,
+        tags:f.tags?f.tags.split(',').map(t=>t.trim()).filter(Boolean):[],
+        content:f.content||'',
+      })
+    })
+    if(!r.ok)throw new Error(await r.text())
+    S.enResult=await r.json();S.enEditing=null;S.enStep='done'
+    loadEntidades()
+  }catch(e){S.enError2=e.message}
+  S.enConfirming=false;render()
+}
+function prefillEnForm(name){S.enForm={title:name,tipo:'persona',area:'Laboral',organizacion:'Total Trade Group',cliente:'Total Trade Group',rol:'',tags:'TTG',content:''};S.enError2=null;S.enStep='form';S.enTab='persona';setView('entidades')}
+async function guardarEntidad(){
+  const f=S.enForm
+  if(!f.title.trim()){S.enError2='El nombre es requerido';render();return}
+  S.enConfirming=true;S.enError2=null;render()
+  try{
+    const tags=f.tags.split(',').map(t=>t.trim()).filter(Boolean)
+    let content=f.content.trim()||`# ${f.title}\n`
+    if(f.rol&&!content.includes('**Rol:**'))content=`**Rol:** ${f.rol}\n\n`+content
+    const r=await api('/notes',{method:'POST',body:JSON.stringify({title:f.title,tipo:f.tipo,area:f.area,estado:'activo',content,tags,cliente:f.cliente||f.organizacion||null,personas:[]})})
+    if(!r.ok){const e=await r.json().catch(()=>{});throw new Error(e?.detail||e?.error||`Error ${r.status}`)}
+    S.enResult=await r.json();S.enStep='done'
+    S.enSuggestions=S.enSuggestions.filter(n=>n!==f.title)
+    await loadEntidades()
+  }catch(e){S.enError2=e.message}
+  S.enConfirming=false;render()
+}
+function resetEn(){S.enStep='form';S.enForm={title:'',tipo:S.enTab,area:'Laboral',organizacion:'',cliente:'',rol:'',tags:'',content:''};S.enError2=null;S.enResult=null;render()}
+
+// ══════════════════════════════════════════════════════════
+// DATA LOADING
+// ══════════════════════════════════════════════════════════
+async function loadAll(){loadStats();loadBoards();loadInbox();loadEntidades()}
+
+async function loadStats(){
+  try{const r=await api('/vault/stats');if(r.ok)S.stats=await r.json()}catch(e){}
+  render()
+}
+async function markRevisado(noteId){
+  try{
+    const r=await api(`/notes/${encodeURIComponent(noteId)}`,{method:'PATCH',body:JSON.stringify({revisado:true})})
+    if(!r.ok)throw new Error(await r.text())
+    loadBoards();loadStats()
+  }catch(e){alert('Error: '+e.message)}
+}
+async function loadBoards(){
+  S.boardsLoading=true
+  try{
+    // Paginate to get all notes
+    let all=[],page=1,total=Infinity
+    while(all.length<total){
+      const r=await api(`/notes?per_page=100&page=${page}`);if(!r.ok)break
+      const d=await r.json();total=d.total||0
+      all=[...all,...(d.results||[])];page++
+      if(d.results?.length<100)break
+    }
+    S.allNotes=all
+    const boards={},pendingReview=[]
+    for(const n of all){
+      const t=n.metadata?.tipo||'nota';const m=n.metadata||{}
+      const item={id:n.id,title:n.title,area:m.area,estado:m.estado,prioridad:m.prioridad,cliente:m.cliente,revisado:m.revisado,tags:m.tags||[],tipo:t}
+      if(!boards[t])boards[t]=[]
+      boards[t].push(item)
+      if(!m.revisado&&m.estado!=='borrador'&&m.estado!=='archivado')pendingReview.push(item)
+    }
+    boards['__revisar']=pendingReview
+    S.boards=boards
+  }catch(e){}
+  S.boardsLoading=false;render()
+}
+async function loadInbox(){
+  S.ibLoading=true;S.ibError=null;render()
+  try{
+    const r=await api('/notes?estado=borrador&per_page=50')
+    if(!r.ok)throw new Error(await r.text())
+    const d=await r.json();S.ibDrafts=d.results||[];S.drafts_count=S.ibDrafts.length
+  }catch(e){S.ibError=e.message}
+  S.ibLoading=false;render()
+}
+
+// ══════════════════════════════════════════════════════════
+// VAULT SYNC
+// ══════════════════════════════════════════════════════════
+async function vlCheckBroken(){
+  S.vlBrokenLoading=true;S.vlBrokenError=null;render()
+  try{
+    const r=await api('/api/vault/links/broken')
+    if(!r.ok)throw new Error(await r.text())
+    S.vlBroken=await r.json()
+  }catch(e){S.vlBrokenError=e.message}
+  S.vlBrokenLoading=false;render()
+}
+async function vlGenerate(dryRun){
+  S.vlGenLoading=true;S.vlGenError=null;S.vlGenResult=null;S.vlGenDryRun=dryRun;render()
+  try{
+    const r=await api('/api/vault/links/generate',{method:'POST',body:JSON.stringify({dry_run:dryRun})})
+    if(!r.ok)throw new Error(await r.text())
+    S.vlGenResult=await r.json()
+  }catch(e){S.vlGenError=e.message}
+  S.vlGenLoading=false;render()
+}
+function renderVault(){
+  const broken=S.vlBroken
+  const gen=S.vlGenResult
+  return`<div class="form-wrap">
+    <div style="margin-bottom:24px">
+      <div class="section-title">Vault</div>
+      <div style="font-size:13px;color:var(--tx2)">Sincronizacion de vinculos entre notas</div>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--b);border-radius:var(--rl);padding:18px;margin-bottom:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div>
+          <div style="font-family:'Fraunces',serif;font-size:15px;font-weight:600">Vinculos rotos</div>
+          <div style="font-size:12px;color:var(--tx3);margin-top:2px">Links que apuntan a notas inexistentes</div>
+        </div>
+        <button class="btn btn-ghost" style="padding:7px 14px;font-size:12px" onclick="vlCheckBroken()">
+          ${S.vlBrokenLoading?'<div class="spinner" style="width:11px;height:11px;border-width:1.5px"></div>':'&#8634; Verificar'}
+        </button>
+      </div>
+      ${S.vlBrokenError?`<div class="alert-err">${esc(S.vlBrokenError)}</div>`:''}
+      ${!broken&&!S.vlBrokenLoading?`<div style="font-size:13px;color:var(--tx3)">Presiona Verificar para escanear el vault.</div>`:''}
+      ${broken?`
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:${broken.total?'12px':'0'}">
+          <span style="font-size:22px;font-family:'Fraunces',serif;font-weight:700;color:${broken.total?'var(--rd)':'var(--ac2)'}">${broken.total}</span>
+          <span style="font-size:13px;color:var(--tx2)">${broken.total===0?'Sin vinculos rotos. El vault esta completamente conectado.':'vinculos rotos encontrados'}</span>
+        </div>
+        ${broken.results.slice(0,8).map(b=>`
+          <div style="display:flex;gap:8px;align-items:flex-start;padding:6px 0;border-bottom:1px solid var(--b);font-size:12px">
+            <span style="color:var(--rd);flex-shrink:0">x</span>
+            <div>
+              <span style="color:var(--tx2)">${esc(b.note_title)}</span>
+              <span style="color:var(--tx3)"> &rarr; </span>
+              <span style="color:var(--rd);font-family:'JetBrains Mono',monospace">[[${esc(b.broken_link)}]]</span>
+            </div>
+          </div>`).join('')}
+        ${broken.total>8?`<div style="font-size:12px;color:var(--tx3);margin-top:8px">... y ${broken.total-8} mas</div>`:''}
+      `:''}
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--b);border-radius:var(--rl);padding:18px">
+      <div style="margin-bottom:14px">
+        <div style="font-family:'Fraunces',serif;font-size:15px;font-weight:600">Generar vinculos</div>
+        <div style="font-size:12px;color:var(--tx3);margin-top:2px">Conecta personas, proyectos y clientes automaticamente</div>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <button class="btn btn-ghost" style="flex:1;font-size:12px;padding:9px" onclick="vlGenerate(true)">
+          ${S.vlGenLoading&&S.vlGenDryRun?'<div class="spinner" style="width:11px;height:11px;border-width:1.5px"></div>':'&#9678; Previsualizar'}
+        </button>
+        <button class="btn btn-primary" style="flex:1;font-size:12px;padding:9px" onclick="vlGenerate(false)">
+          ${S.vlGenLoading&&!S.vlGenDryRun?'<div class="spinner" style="width:11px;height:11px;border-width:1.5px;border-top-color:#080600"></div>':'&#11041; Sincronizar'}
+        </button>
+      </div>
+      ${S.vlGenError?`<div class="alert-err">${esc(S.vlGenError)}</div>`:''}
+      ${gen?`
+        <div style="display:flex;gap:16px;margin-bottom:${gen.notes_affected?'12px':'0'}">
+          <div style="text-align:center">
+            <div style="font-size:20px;font-family:'Fraunces',serif;font-weight:700;color:var(--ac)">${gen.notes_affected}</div>
+            <div style="font-size:11px;color:var(--tx3)">notas</div>
+          </div>
+          <div style="text-align:center">
+            <div style="font-size:20px;font-family:'Fraunces',serif;font-weight:700;color:var(--ac2)">${gen.total_changes}</div>
+            <div style="font-size:11px;color:var(--tx3)">vinculos</div>
+          </div>
+          <div style="display:flex;align-items:center">
+            <span style="font-size:11px;padding:3px 8px;border-radius:4px;background:${gen.dry_run?'var(--pud)':'var(--ac2d)'};color:${gen.dry_run?'var(--pu)':'var(--ac2)'}">
+              ${gen.dry_run?'previsualizacion':'aplicado'}
+            </span>
+          </div>
+        </div>
+        ${gen.notes_affected===0?`<div style="font-size:13px;color:var(--tx3)">El vault ya esta completamente sincronizado.</div>`:''}
+        ${gen.results.slice(0,5).map(r=>`
+          <div style="padding:7px 0;border-bottom:1px solid var(--b)">
+            <div style="font-size:12px;font-weight:500;color:var(--tx);margin-bottom:3px">${esc(r.title.replace(/\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g,'$1'))}</div>
+            ${r.changes.slice(0,2).map(c=>`
+              <div style="font-size:11px;color:var(--tx3);font-family:'JetBrains Mono',monospace">
+                <span>${esc(c.field)}: </span>
+                ${c.old?`<span style="color:var(--rd);text-decoration:line-through">${esc(c.old.substring(0,30))}</span> &rarr; `:''}
+                <span style="color:var(--ac2)">${esc(c.new.substring(0,40))}</span>
+              </div>`).join('')}
+          </div>`).join('')}
+        ${gen.notes_affected>5?`<div style="font-size:12px;color:var(--tx3);margin-top:8px">... y ${gen.notes_affected-5} notas mas</div>`:''}
+      `:''}
+    </div>
+  </div>`
+}
+
+// ══════════════════════════════════════════════════════════
+// ADJUNTOS
+// ══════════════════════════════════════════════════════════
+async function uploadAttachment(file, targetField){
+  if(!file)return
+  S.attachUploading=true;S.attachError=null;render()
+  try{
+    const fd=new FormData();fd.append('file',file)
+    const r=await api('/attachments',{method:'POST',headers:{},body:fd})
+    if(!r.ok){const t=await r.text();throw new Error(t)}
+    const d=await r.json()
+    // Insertar embed en el campo de contenido activo
+    const embed=d.embed
+    if(targetField==='nnContent'){
+      S.nnContent=(S.nnContent?S.nnContent+'\n\n':'')+embed
+    }else if(targetField==='ibContent'&&S.ibParsed){
+      S.ibParsed.content=(S.ibParsed.content?S.ibParsed.content+'\n\n':'')+embed
+    }
+    S.attachList=[{filename:d.filename,embed:d.embed,size_kb:d.size_kb,is_image:d.is_image},...S.attachList]
+    await navigator.clipboard.writeText(embed).catch(()=>{})
+  }catch(e){S.attachError=e.message}
+  S.attachUploading=false;render()
+}
+function handleAttachDrop(e, targetField){
+  e.preventDefault()
+  const file=e.dataTransfer?.files?.[0]||e.target.files?.[0]
+  if(file)uploadAttachment(file, targetField)
+}
+function renderAttachZone(targetField){
+  return`
+    <div style="border:1.5px dashed var(--b);border-radius:var(--r);padding:12px 16px;text-align:center;cursor:pointer;transition:border-color .2s;position:relative"
+      ondragover="event.preventDefault();this.style.borderColor='var(--ac)'"
+      ondragleave="this.style.borderColor='var(--b)'"
+      ondrop="handleAttachDrop(event,'${targetField}');this.style.borderColor='var(--b)'"
+      onclick="document.getElementById('attach-inp-${targetField}').click()">
+      <input id="attach-inp-${targetField}" type="file" style="display:none"
+        accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.svg,.mp3,.mp4,.m4a,.wav,.doc,.docx,.xls,.xlsx,.txt,.md,.csv,.zip"
+        onchange="handleAttachDrop(event,'${targetField}')">
+      ${S.attachUploading
+        ?'<div class="spinner" style="width:14px;height:14px;border-width:2px;margin:0 auto"></div>'
+        :`<span style="font-size:12px;color:var(--tx3)">📎 Arrastrá o hacé click para adjuntar un archivo</span>`}
+    </div>
+    ${S.attachError?`<div class="alert-err" style="font-size:12px;margin-top:6px">${esc(S.attachError)}</div>`:''}
+    ${S.attachList.length?`
+      <div style="margin-top:8px;display:flex;flex-direction:column;gap:4px">
+        ${S.attachList.slice(0,3).map(a=>`
+          <div style="display:flex;align-items:center;gap:8px;background:var(--bg3);border-radius:6px;padding:5px 10px;font-size:12px">
+            <span style="color:var(--tx3)">${a.is_image?'🖼':'📎'}</span>
+            <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--tx2)">${esc(a.filename)}</span>
+            <span style="color:var(--tx3);flex-shrink:0">${a.size_kb}KB</span>
+            <button onclick="navigator.clipboard.writeText('${esc(a.embed)}')" style="background:none;border:none;cursor:pointer;color:var(--tx3);font-size:10px;padding:2px 6px;border-radius:4px;background:var(--bg4)" title="Copiar embed">⎘</button>
+          </div>`).join('')}
+      </div>`:''}
+  `
+}
+
+// ══════════════════════════════════════════════════════════
+// TAGS DB
+// ══════════════════════════════════════════════════════════
+function buildTagIndex(){
+  const idx={}
+  for(const n of(S.allNotes||[])){
+    if(n.metadata?.estado==='archivado')continue
+    for(const t of(n.metadata?.tags||[])){
+      if(!t)continue
+      if(!idx[t])idx[t]=[]
+      idx[t].push(n)
+    }
+  }
+  return idx
+}
+function renderTags(){
+  const idx=buildTagIndex()
+  const tags=Object.entries(idx).sort((a,b)=>b[1].length-a[1].length)
+  const q=(S.tagSearch||'').toLowerCase()
+  const filtered=S.tagSelected
+    ? (idx[S.tagSelected]||[]).filter(n=>!q||n.title.toLowerCase().includes(q)||(n.metadata?.tags||[]).some(t=>t.toLowerCase().includes(q)))
+    : []
+  // Color palette for tags
+  const colors=['var(--ac)','var(--ac2)','var(--pu)','#60a5fa','#f97316','#a3e635','#e879f9','#2dd4bf']
+  const tagColor=(t)=>colors[Math.abs(t.split('').reduce((a,c)=>a+c.charCodeAt(0),0))%colors.length]
+
+  return`<div style="display:flex;gap:0;height:100%;min-height:0">
+
+    <!-- TAG SIDEBAR -->
+    <div style="width:200px;flex-shrink:0;border-right:1px solid var(--b);overflow-y:auto;padding:12px 8px">
+      <div style="font-size:10px;font-family:'JetBrains Mono',monospace;letter-spacing:.1em;color:var(--tx3);text-transform:uppercase;padding:4px 8px;margin-bottom:8px">
+        ${tags.length} tags
+      </div>
+      <div style="cursor:pointer;padding:6px 8px;border-radius:6px;font-size:12.5px;margin-bottom:2px;transition:background .15s;${!S.tagSelected?'background:var(--acd);color:var(--ac);font-weight:500':'color:var(--tx2)'}" onclick="S.tagSelected=null;S.tagSearch='';render()">
+        ◈ Todas las notas
+        <span style="float:right;font-size:10px;color:var(--tx3)">${(S.allNotes||[]).filter(n=>n.metadata?.estado!=='archivado').length}</span>
+      </div>
+      ${tags.filter(([t])=>!['railcode','notion'].includes(t)).map(([t,notes])=>`
+        <div style="cursor:pointer;padding:5px 8px;border-radius:6px;font-size:12px;margin-bottom:1px;display:flex;align-items:center;gap:6px;transition:background .15s;${S.tagSelected===t?'background:var(--bg3);':''}color:${S.tagSelected===t?'var(--tx)':'var(--tx2)'}"
+          onclick="S.tagSelected='${esc(t)}';S.tagSearch='';render()"
+          onmouseover="if('${esc(t)}'!==S.tagSelected)this.style.background='var(--bg3)'"
+          onmouseout="if('${esc(t)}'!==S.tagSelected)this.style.background=''">
+          <span style="color:${tagColor(t)};font-size:10px">●</span>
+          <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">#${esc(t)}</span>
+          <span style="font-size:10px;color:var(--tx3);flex-shrink:0">${notes.length}</span>
+        </div>`).join('')}
+    </div>
+
+    <!-- NOTE TABLE -->
+    <div style="flex:1;overflow:auto;padding:16px">
+      ${!S.tagSelected?`
+        <!-- Tag cloud overview -->
+        <div style="margin-bottom:20px">
+          <div class="section-title">Base de conocimiento</div>
+          <div style="font-size:13px;color:var(--tx2);margin-top:4px">${(S.allNotes||[]).filter(n=>n.metadata?.estado!=='archivado').length} notas · ${tags.length} tags</div>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:24px">
+          ${tags.filter(([t])=>!['railcode','notion'].includes(t)).map(([t,notes])=>`
+            <button onclick="S.tagSelected='${esc(t)}';render()" style="background:none;border:1px solid var(--b);border-radius:20px;padding:5px 12px;cursor:pointer;font-size:12px;color:var(--tx2);transition:all .2s;display:flex;align-items:center;gap:5px"
+              onmouseover="this.style.borderColor='${tagColor(t)}';this.style.color='${tagColor(t)}'"
+              onmouseout="this.style.borderColor='var(--b)';this.style.color='var(--tx2)'">
+              <span style="color:${tagColor(t)};font-size:9px">●</span>
+              #${esc(t)}
+              <span style="background:var(--bg3);padding:1px 6px;border-radius:10px;font-size:10px;color:var(--tx3)">${notes.length}</span>
+            </button>`).join('')}
+        </div>
+        <!-- Most used tags table -->
+        <div style="background:var(--bg2);border:1px solid var(--b);border-radius:var(--rl);overflow:hidden">
+          <table style="width:100%;border-collapse:collapse;font-size:12.5px">
+            <thead>
+              <tr style="border-bottom:1px solid var(--b);background:var(--bg3)">
+                <th style="padding:10px 14px;text-align:left;font-size:10px;font-family:'JetBrains Mono',monospace;letter-spacing:.08em;color:var(--tx3);font-weight:500">TAG</th>
+                <th style="padding:10px 14px;text-align:center;font-size:10px;font-family:'JetBrains Mono',monospace;letter-spacing:.08em;color:var(--tx3);font-weight:500">NOTAS</th>
+                <th style="padding:10px 14px;text-align:left;font-size:10px;font-family:'JetBrains Mono',monospace;letter-spacing:.08em;color:var(--tx3);font-weight:500">TIPOS</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${tags.filter(([t])=>!['railcode','notion'].includes(t)).slice(0,20).map(([t,notes],i)=>{
+                const tipos=[...new Set(notes.map(n=>n.metadata?.tipo||'nota'))].slice(0,3).join(', ')
+                return`<tr style="border-bottom:1px solid rgba(42,40,32,.5);cursor:pointer;transition:background .15s" onclick="S.tagSelected='${esc(t)}';render()" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''">
+                  <td style="padding:9px 14px;font-weight:500;color:var(--tx)">
+                    <span style="color:${tagColor(t)};margin-right:6px;font-size:10px">●</span>#${esc(t)}
+                  </td>
+                  <td style="padding:9px 14px;text-align:center;color:var(--ac);font-weight:600;font-family:'Fraunces',serif;font-size:15px">${notes.length}</td>
+                  <td style="padding:9px 14px;color:var(--tx3);font-size:11px">${tipos}</td>
+                </tr>`}).join('')}
+            </tbody>
+          </table>
+        </div>
+      `:`
+        <!-- Notes for selected tag -->
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+          <div>
+            <span style="font-family:'Fraunces',serif;font-size:18px;font-weight:600;color:${tagColor(S.tagSelected)}">#${esc(S.tagSelected)}</span>
+            <span style="font-size:13px;color:var(--tx3);margin-left:8px">${(idx[S.tagSelected]||[]).length} notas</span>
+          </div>
+          <input style="flex:1;max-width:260px;background:var(--bg2);border:1px solid var(--b);border-radius:var(--r);padding:7px 12px;font-size:13px;color:var(--tx);outline:none"
+            placeholder="Buscar en este tag..."
+            value="${esc(S.tagSearch)}"
+            oninput="S.tagSearch=this.value;render()">
+        </div>
+        <div style="background:var(--bg2);border:1px solid var(--b);border-radius:var(--rl);overflow:hidden">
+          <table style="width:100%;border-collapse:collapse;font-size:12.5px">
+            <thead>
+              <tr style="border-bottom:1px solid var(--b);background:var(--bg3)">
+                <th style="padding:10px 14px;text-align:left;font-size:10px;font-family:'JetBrains Mono',monospace;letter-spacing:.08em;color:var(--tx3);font-weight:500">NOTA</th>
+                <th style="padding:10px 14px;text-align:left;font-size:10px;font-family:'JetBrains Mono',monospace;letter-spacing:.08em;color:var(--tx3);font-weight:500;display:none" class="hide-mobile">TIPO</th>
+                <th style="padding:10px 14px;text-align:left;font-size:10px;font-family:'JetBrains Mono',monospace;letter-spacing:.08em;color:var(--tx3);font-weight:500">ESTADO</th>
+                <th style="padding:10px 14px;text-align:left;font-size:10px;font-family:'JetBrains Mono',monospace;letter-spacing:.08em;color:var(--tx3);font-weight:500">TAGS</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${filtered.length===0?`<tr><td colspan="4" style="padding:32px;text-align:center;color:var(--tx3)">Sin resultados</td></tr>`:''}
+              ${filtered.map(n=>{
+                const m=n.metadata||{}
+                const title=(n.title||'').replace(/\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g,'$1')
+                const tags=(m.tags||[]).filter(t=>t&&t!=='railcode'&&t!=='notion')
+                const estado=m.estado||'—'
+                const estadoColor=estado==='activo'?'var(--ac2)':estado==='en_proceso'?'var(--ac)':estado==='archivado'?'var(--tx3)':'var(--tx2)'
+                return`<tr style="border-bottom:1px solid rgba(42,40,32,.5);cursor:pointer;transition:background .15s" onclick="openNote('${esc(n.id)}')" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''">
+                  <td style="padding:9px 14px">
+                    <div style="font-weight:500;color:var(--tx);line-height:1.3">${esc(title)}</div>
+                    ${m.cliente?`<div style="font-size:11px;color:var(--tx3);margin-top:2px">${esc((m.cliente||'').replace(/\[\[|\]\]/g,''))}</div>`:''}
+                  </td>
+                  <td style="padding:9px 14px;color:var(--tx3)">${esc(m.tipo||'nota')}</td>
+                  <td style="padding:9px 14px">
+                    <span style="font-size:10px;padding:2px 7px;border-radius:10px;background:${estadoColor}22;color:${estadoColor}">${estado}</span>
+                  </td>
+                  <td style="padding:9px 14px">
+                    <div style="display:flex;flex-wrap:wrap;gap:3px">
+                      ${tags.slice(0,4).map(t=>`<span style="font-size:10px;padding:1px 7px;border-radius:10px;background:var(--bg3);border:1px solid var(--b);color:${tagColor(t)};cursor:pointer" onclick="event.stopPropagation();S.tagSelected='${esc(t)}';render()">#${esc(t)}</span>`).join('')}
+                      ${tags.length>4?`<span style="font-size:10px;color:var(--tx3)">+${tags.length-4}</span>`:''}
+                    </div>
+                  </td>
+                </tr>`}).join('')}
+            </tbody>
+          </table>
+        </div>
+      `}
+    </div>
+  </div>`
+}
+
+// ══════════════════════════════════════════════════════════
+// SISTEMA
+// ══════════════════════════════════════════════════════════
+async function loadSistema(){
+  S.sysLoading=true;S.sysError=null;render()
+  try{
+    const r=await api('/system/status')
+    if(!r.ok)throw new Error(await r.text())
+    S.sysData=await r.json()
+  }catch(e){S.sysError=e.message}
+  S.sysLoading=false;render()
+}
+function fmtDate(iso){
+  if(!iso)return '—'
+  try{
+    const d=new Date(iso)
+    return d.toLocaleString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})
+  }catch{return iso}
+}
+function renderSistema(){
+  const d=S.sysData
+  return`<div class="form-wrap">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
+      <div>
+        <div class="section-title">Sistema</div>
+        <div style="font-size:13px;color:var(--tx2)">Estado de servidores, sincronización y vault</div>
+      </div>
+      <button class="btn btn-ghost" style="padding:7px 14px;font-size:12px" onclick="loadSistema()">
+        ${S.sysLoading?'<div class="spinner" style="width:11px;height:11px;border-width:1.5px"></div>':'↺ Actualizar'}
+      </button>
+    </div>
+    ${S.sysError?`<div class="alert-err">${esc(S.sysError)}</div>`:''}
+    ${S.sysLoading&&!d?`<div class="loading"><div class="spinner"></div></div>`:''}
+    ${!d&&!S.sysLoading?`<div style="text-align:center;color:var(--tx3);padding:40px 0">
+      <div style="font-size:28px;margin-bottom:10px">◇</div>
+      <div style="font-size:13px">Presioná Actualizar para cargar el estado del sistema</div>
+    </div>`:''}
+    ${d?`
+      <!-- API -->
+      <div style="background:var(--bg2);border:1px solid var(--b);border-radius:var(--rl);padding:18px;margin-bottom:12px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <div style="width:8px;height:8px;border-radius:50%;background:${d.api.status==='ok'?'var(--ac2)':'var(--rd)'};flex-shrink:0"></div>
+          <div style="font-family:'Fraunces',serif;font-size:15px;font-weight:600">API FastAPI</div>
+          <span style="font-size:10px;padding:2px 7px;border-radius:4px;background:${d.api.status==='ok'?'var(--ac2d)':'var(--rdd)'};color:${d.api.status==='ok'?'var(--ac2)':'var(--rd)'}">
+            ${d.api.status.toUpperCase()}
+          </span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div style="font-size:12px"><span style="color:var(--tx3)">Uptime:</span> <span style="color:var(--tx)">${esc(d.api.uptime)}</span></div>
+          <div style="font-size:12px"><span style="color:var(--tx3)">Iniciado:</span> <span style="color:var(--tx)">${fmtDate(d.api.started_at)}</span></div>
+          <div style="font-size:12px"><span style="color:var(--tx3)">Notas indexadas:</span> <span style="color:var(--ac);font-weight:600">${d.api.indexed_notes}</span></div>
+          <div style="font-size:12px"><span style="color:var(--tx3)">Sin revisar:</span> <span style="color:${d.vault.notes_to_review>0?'var(--ac)':'var(--tx)'};font-weight:600">${d.vault.notes_to_review}</span></div>
+        </div>
+      </div>
+
+      <!-- Git Sync -->
+      <div style="background:var(--bg2);border:1px solid var(--b);border-radius:var(--rl);padding:18px;margin-bottom:12px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <div style="width:8px;height:8px;border-radius:50%;background:${d.git.is_clean?'var(--ac2)':'var(--ac)'};flex-shrink:0"></div>
+          <div style="font-family:'Fraunces',serif;font-size:15px;font-weight:600">Git Sync</div>
+          <span style="font-size:10px;padding:2px 7px;border-radius:4px;background:${d.git.is_clean?'var(--ac2d)':'var(--acd)'};color:${d.git.is_clean?'var(--ac2)':'var(--ac)'}">
+            ${d.git.is_clean?'LIMPIO':'CAMBIOS PENDIENTES'}
+          </span>
+        </div>
+        <div style="margin-bottom:10px">
+          <div style="font-size:12px;color:var(--tx3);margin-bottom:4px">Último commit</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;background:var(--bg3);padding:8px 10px;border-radius:6px;border:1px solid var(--b)">
+            <span style="color:var(--pu)">${esc(d.git.last_commit_hash||'—')}</span>
+            <span style="color:var(--tx2)"> ${esc(d.git.last_commit_message||'')}</span>
+            <div style="color:var(--tx3);margin-top:3px">${fmtDate(d.git.last_commit_date)} · ${esc(d.git.last_commit_author||'')}</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+          <div style="text-align:center;background:var(--bg3);border-radius:6px;padding:8px">
+            <div style="font-size:18px;font-family:'Fraunces',serif;font-weight:700;color:${d.git.pending_modified>0?'var(--ac)':'var(--tx3)'}">${d.git.pending_modified}</div>
+            <div style="font-size:10px;color:var(--tx3)">modificados</div>
+          </div>
+          <div style="text-align:center;background:var(--bg3);border-radius:6px;padding:8px">
+            <div style="font-size:18px;font-family:'Fraunces',serif;font-weight:700;color:${d.git.pending_new>0?'var(--ac2)':'var(--tx3)'}">${d.git.pending_new}</div>
+            <div style="font-size:10px;color:var(--tx3)">nuevos</div>
+          </div>
+          <div style="text-align:center;background:var(--bg3);border-radius:6px;padding:8px">
+            <div style="font-size:18px;font-family:'Fraunces',serif;font-weight:700;color:${d.git.pending_deleted>0?'var(--rd)':'var(--tx3)'}">${d.git.pending_deleted}</div>
+            <div style="font-size:10px;color:var(--tx3)">eliminados</div>
+          </div>
+        </div>
+        <div style="margin-top:10px;font-size:12px;color:var(--tx3)">Total commits: <span style="color:var(--tx)">${d.git.total_commits}</span> · Auto-sync cada 5 min</div>
+      </div>
+
+      <!-- Vault breakdown -->
+      <div style="background:var(--bg2);border:1px solid var(--b);border-radius:var(--rl);padding:18px">
+        <div style="font-family:'Fraunces',serif;font-size:15px;font-weight:600;margin-bottom:14px">Vault</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px">
+          <div style="font-size:12px"><span style="color:var(--tx3)">Tamaño:</span> <span style="color:var(--tx)">${d.vault.vault_size_kb} KB</span></div>
+          <div style="font-size:12px"><span style="color:var(--tx3)">Total notas:</span> <span style="color:var(--ac);font-weight:600">${d.vault.total_notes}</span></div>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          ${Object.entries(d.vault.by_type).sort((a,b)=>b[1]-a[1]).map(([tipo,count])=>`
+            <div style="display:flex;align-items:center;gap:5px;background:var(--bg3);border-radius:6px;padding:5px 10px;font-size:11px">
+              <span style="color:var(--tx2)">${esc(tipo)}</span>
+              <span style="color:var(--ac);font-weight:600">${count}</span>
+            </div>`).join('')}
+        </div>
+      </div>
+    `:''}
+  </div>`
+}
+
+// ══════════════════════════════════════════════════════════
+// SEMANTIC LINKS
+// ══════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
+// SACAR EL JUGO
+// ══════════════════════════════════════════════════════════
+function mergeDatosDurosSection(content,sectionMarkdown){
+  // Idempotente: si ya se corrió antes, el bloque agregado empieza en
+  // "## Puntos clave" y va al final de la nota — lo recortamos y reemplazamos.
+  const idx=content.indexOf('\n## Puntos clave')
+  const base=idx>=0?content.slice(0,idx):content
+  return `${base.trimEnd()}\n\n${sectionMarkdown.trim()}\n`
+}
+async function runExtractFacts(noteId){
+  if(!noteId)return
+  S.xfLoading=true;S.xfError=null;render()
+  try{
+    const nr=await api(`/notes/${encodeURIComponent(noteId)}`)
+    if(!nr.ok)throw new Error(await nr.text())
+    const note=await nr.json()
+    const content=note.content||note.excerpt||''
+    const fr=await fetch('/api/ai/extract-facts',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':S.token?`Bearer ${S.token}`:''},
+      body:JSON.stringify({title:note.title,content}),
+    })
+    if(!fr.ok)throw new Error(await fr.text())
+    const{section_markdown}=await fr.json()
+    const merged=mergeDatosDurosSection(content,section_markdown)
+    const pr=await api(`/notes/${encodeURIComponent(noteId)}`,{method:'PATCH',body:JSON.stringify({content:merged})})
+    if(!pr.ok)throw new Error(await pr.text())
+    if(S.openNote?.id===noteId){
+      const rr=await api(`/notes/${encodeURIComponent(noteId)}`)
+      if(rr.ok)S.openNote=await rr.json()
+    }
+  }catch(e){S.xfError=e.message}
+  S.xfLoading=false;render()
+}
+async function extractFactsForImported(results){
+  for(const r of results){
+    if(r.ok&&r.id)await runExtractFacts(r.id)
+  }
+}
+
+async function suggestLinks(noteId){
+  S.semLoading=true;S.semError=null;S.semSuggestions=null;S.semSelected=[];render()
+  try{
+    const r=await api(`/vault/links/suggest/${encodeURIComponent(noteId)}`)
+    if(!r.ok)throw new Error(await r.text())
+    S.semSuggestions=await r.json()
+  }catch(e){S.semError=e.message}
+  S.semLoading=false;render()
+}
+async function applyLinks(sourceId){
+  const links=S.semSelected.map(tid=>({source_id:sourceId,target_id:tid}))
+  if(!links.length)return
+  try{
+    const r=await api('/vault/links/apply',{method:'POST',body:JSON.stringify({links})})
+    if(!r.ok)throw new Error(await r.text())
+    const d=await r.json()
+    S.semSuggestions=null;S.semSelected=[]
+    alert(`${d.applied} conexión${d.applied>1?'es':''} aplicada${d.applied>1?'s':''}`)
+    render()
+  }catch(e){alert('Error: '+e.message)}
+}
+
+// ══════════════════════════════════════════════════════════
+// CHAT IA
+// ══════════════════════════════════════════════════════════
+async function chatSend(){
+  const msg=S.chatInput.trim()
+  if(!msg||S.chatLoading)return
+  S.chatMessages.push({role:'user',text:msg})
+  S.chatInput='';S.chatLoading=true;S.chatError=null;render()
+  try{
+    // Obtener contexto del vault relevante al mensaje
+    const ctxR=await api('/ai/context',{method:'POST',body:JSON.stringify({query:msg,max_results:6,filters:{}})})
+    const ctx=ctxR.ok?await ctxR.json():null
+    const notesContext=(ctx?.results||[]).map(n=>`- ${n.title} (${n.tipo||''}): ${n.excerpt||''}`).join('\n')
+    // Enviar al chat con contexto
+    const history=S.chatMessages.slice(-10,-1).map(m=>({role:m.role,text:m.text}))
+    const r=await api('/api/ai/chat',{method:'POST',body:JSON.stringify({message:msg,notesContext,history})})
+    if(!r.ok)throw new Error(await r.text())
+    const d=await r.json()
+    S.chatMessages.push({role:'model',text:d.text||''})
+  }catch(e){S.chatError=e.message;S.chatMessages.push({role:'model',text:'Error: '+e.message,err:true})}
+  S.chatLoading=false;render()
+  setTimeout(()=>{const c=document.getElementById('chat-msgs');if(c)c.scrollTop=c.scrollHeight},50)
+}
+function chatMd(txt){
+  return txt
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g,'<em>$1</em>')
+    .replace(/`(.+?)`/g,'<code style="background:var(--bg3);padding:1px 5px;border-radius:4px;font-family:JetBrains Mono,monospace;font-size:11px">$1</code>')
+    .replace(/^- (.+)/gm,'<li>$1</li>').replace(/(<li>.*<\/li>)/s,'<ul style="padding-left:16px;margin:4px 0">$1</ul>')
+    .replace(/\n/g,'<br>')
+}
+function renderChat(){
+  return`<div style="display:flex;flex-direction:column;height:100%;max-width:740px;margin:0 auto">
+    <div style="margin-bottom:16px">
+      <div class="section-title">Chat IA</div>
+      <div style="font-size:13px;color:var(--tx2)">Preguntale a Gemini sobre tus notas y proyectos</div>
+    </div>
+    <div id="chat-msgs" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:12px;padding-bottom:8px;min-height:0">
+      ${!S.chatMessages.length?`
+        <div style="margin:auto;text-align:center;color:var(--tx3)">
+          <div style="font-size:32px;margin-bottom:12px">◉</div>
+          <div style="font-family:'Fraunces',serif;font-size:16px;margin-bottom:6px">Pregunta lo que quieras</div>
+          <div style="font-size:12px">Gemini tiene acceso a todas tus notas del vault</div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:16px">
+            ${['Que proyectos tengo activos?','Quien es Fernando de TTG?','Estado del proyecto TotalView','Cuales son mis proximas acciones?'].map(q=>
+              `<button class="btn btn-ghost" style="font-size:12px;padding:6px 12px" onclick="S.chatInput=${JSON.stringify(q)};chatSend()">${q}</button>`
+            ).join('')}
+          </div>
+        </div>`
+      :S.chatMessages.map(m=>`
+        <div style="display:flex;${m.role==='user'?'justify-content:flex-end':''}">
+          <div style="max-width:85%;padding:10px 14px;border-radius:${m.role==='user'?'13px 13px 3px 13px':'13px 13px 13px 3px'};
+            background:${m.role==='user'?'var(--ac)':'var(--bg2)'};
+            color:${m.role==='user'?'#080600':'var(--tx)'};
+            border:${m.role==='user'?'none':'1px solid var(--b)'};
+            font-size:13.5px;line-height:1.6">
+            ${m.role==='user'?esc(m.text):chatMd(m.text)}
+          </div>
+        </div>`).join('')}
+      ${S.chatLoading?`<div style="display:flex"><div style="background:var(--bg2);border:1px solid var(--b);border-radius:13px 13px 13px 3px;padding:12px 16px"><div class="spinner" style="width:14px;height:14px;border-width:2px"></div></div></div>`:''}
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--b)">
+      <input class="fi" id="chat-inp" style="flex:1;margin:0" placeholder="Preguntale sobre tus notas..."
+        value="${esc(S.chatInput)}"
+        oninput="S.chatInput=this.value"
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();chatSend()}">
+      <button class="btn btn-primary" style="padding:9px 16px;flex-shrink:0" onclick="chatSend()" ${S.chatLoading?'disabled':''}>
+        ${S.chatLoading?'<div class="spinner" style="width:13px;height:13px;border-width:1.5px;border-top-color:#080600"></div>':'Enviar'}
+      </button>
+      ${S.chatMessages.length?`<button class="btn btn-ghost" style="padding:9px 12px;flex-shrink:0" onclick="S.chatMessages=[];render()" title="Limpiar">✕</button>`:''}
+    </div>
+  </div>`
+}
+
+// ══════════════════════════════════════════════════════════
+// THEME
+// ══════════════════════════════════════════════════════════
+function toggleTheme(){
+  S.theme=S.theme==='dark'?'light':'dark'
+  localStorage.setItem('pm_theme',S.theme)
+  render()
+}
+
+// ══════════════════════════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════════════════════════
+function setView(v){
+  S.view=v;S.openNote=null
+  if(v==='memoria'&&S.memoryProjects===null)loadMemoryProjects()
+  if(v==='todo')loadTodo()
+  if(v==='inbox'&&!S.ibDrafts.length)loadInbox()
+  if(v==='entidades'&&!Object.keys(S.enList).length)loadEntidades()
+  if(v==='nueva'){S.attachList=[];S.attachError=null}
+  if(v==='reuniones'&&S.rnStep==='notebooks'&&!S.rnNotebooks.length)loadReunionesNotebooks()
+  render()
+}
+function setArea(a){S.areaFilter=a;render()}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+
+// Captura y revisión: original persistente, propuestas separadas.
+S.capOpen=false;S.capBusy=false;S.capError=null;S.capNotice='';S.capMeeting=null;S.capProposals=[];S.capSuggestions=[];
+S.capForm={title:'',fecha:'',source:'',participantes:'',content:'',allow_ai:true,request_id:null};
+function captureBase(){return '/api/memory/projects/'+encodeURIComponent(S.memoryId)+'/meetings'}
+async function captureJSON(path,opts={}){
+  const r=await api(path,opts);const data=await r.json();
+  if(!r.ok)throw new Error(typeof data.detail==='string'?data.detail:(data.error||'No se pudo completar la operación ('+r.status+'). Revisá los datos e intentá nuevamente.'));
+  return data;
+}
+function beginCapture(){
+  if(S.capBusy)return;
+  if(S.capOpen&&!S.capMeeting&&S.capForm.content&&!confirm('¿Descartar la captura sin guardar?'))return;
+  S.capForm={title:'',fecha:'',source:'',participantes:'',content:'',allow_ai:true,request_id:crypto.randomUUID()};
+  S.capOpen=true;S.capMeeting=null;S.capProposals=[];S.capSuggestions=[];S.capError=null;S.capNotice='';render();
+}
+function closeCapture(){
+  if(S.capBusy)return;
+  if(!S.capMeeting&&S.capForm.content&&!confirm('¿Cerrar sin guardar esta captura?'))return;
+  S.capOpen=false;render();
+}
+async function saveCapture(){
+  if(S.capBusy)return;
+  const form=document.getElementById('capture-form');if(form&&!form.reportValidity())return;
+  S.capBusy=true;S.capError=null;render();
+  try{
+    const f=S.capForm;
+    const result=await captureJSON(captureBase(),{method:'POST',body:JSON.stringify({...f,participantes:f.participantes.split('\n').map(p=>p.trim()).filter(Boolean)})});
+    S.capMeeting=await captureJSON(captureBase()+'/'+encodeURIComponent(result.id));
+    S.capNotice='Original guardado. Las propuestas se guardan aparte y requieren tu revisión.';
+    await refreshCaptureMemory();
+  }catch(e){S.capError=e.message}
+  S.capBusy=false;render();
+}
+async function refreshCaptureMemory(){
+  const r=await api('/api/memory/projects/'+encodeURIComponent(S.memoryId)+'/memory');
+  if(r.ok)S.memoryData=await r.json();
+  S.memoryExport='';
+  await loadStats();
+}
+async function reopenCapture(index){
+  if(S.capBusy)return;
+  const source=S.memoryData?.sources[index];if(!source)return;
+  S.capOpen=true;S.capMeeting=null;S.capError=null;S.capSuggestions=[];S.capNotice='';S.capBusy=true;render();
+  try{
+    S.capMeeting=await captureJSON(captureBase()+'/'+encodeURIComponent(source.id));
+    S.capProposals=await captureJSON(captureBase()+'/'+encodeURIComponent(source.id)+'/proposals');
+  }catch(e){S.capError=e.message;S.capOpen=false}
+  S.capBusy=false;render();
+}
+function addManualProposal(){
+  S.capSuggestions.push({request_id:crypto.randomUUID(),tipo:'accion',title:'',detalle:'',evidencia:'',responsable:'',vencimiento:'',selected:true});render();
+}
+async function suggestCapture(){
+  if(S.capBusy||!S.capMeeting)return;
+  if(S.capSuggestions.length&&!confirm('¿Reemplazar las propuestas aún no guardadas por nuevas sugerencias?'))return;
+  S.capBusy=true;S.capError=null;render();
+  try{
+    const d=await captureJSON('/api/ai/meeting-proposals',{method:'POST',body:JSON.stringify({project_id:S.memoryId,meeting_id:S.capMeeting.id})});
+    S.capSuggestions=d.items.map(n=>({...n,request_id:crypto.randomUUID(),selected:true}));
+    S.capNotice=d.items.length?'Revisá cada propuesta y su cita antes de guardarla.':'No se encontraron acuerdos inequívocos. Podés agregar una propuesta manual.';
+    if(d.omitted)S.capNotice+=' Se omitieron '+d.omitted+' sugerencias que no cumplieron la validación.';
+  }catch(e){S.capError=e.message}
+  S.capBusy=false;render();
+}
+async function saveCaptureProposals(){
+  if(S.capBusy||!S.capMeeting)return;
+  const selected=S.capSuggestions.filter(p=>p.selected);if(!selected.length)return;
+  const items=selected.map(({selected,...p})=>({...p,responsable:p.responsable?.trim()||null,vencimiento:p.vencimiento||null}));
+  if(items.some(p=>!p.title.trim()||!p.detalle.trim()||!p.evidencia.trim()||!S.capMeeting.content.includes(p.evidencia))){S.capError='Completá título, detalle y una cita copiada exactamente del original.';render();return}
+  S.capBusy=true;S.capError=null;render();
+  try{
+    await captureJSON(captureBase()+'/'+encodeURIComponent(S.capMeeting.id)+'/proposals',{method:'POST',body:JSON.stringify({items})});
+    S.capProposals=await captureJSON(captureBase()+'/'+encodeURIComponent(S.capMeeting.id)+'/proposals');
+    S.capSuggestions=S.capSuggestions.filter(p=>!p.selected);S.capNotice='Propuestas guardadas en Inbox. Aprobá o descartá cada una abajo.';
+  }catch(e){S.capError=e.message}
+  S.capBusy=false;render();
+}
+async function reviewCaptureProposal(index,action){
+  if(S.capBusy)return;const p=S.capProposals[index];if(!p)return;
+  S.capBusy=true;S.capError=null;render();
+  try{
+    await captureJSON(captureBase()+'/'+encodeURIComponent(S.capMeeting.id)+'/proposals/'+encodeURIComponent(p.id)+'/review',{method:'POST',body:JSON.stringify({action})});
+    S.capProposals=await captureJSON(captureBase()+'/'+encodeURIComponent(S.capMeeting.id)+'/proposals');
+    await refreshCaptureMemory();S.capNotice=action==='approve'?'Aprobada y vinculada al proyecto.':'Propuesta descartada; la fuente original se conserva.';
+  }catch(e){S.capError=e.message}
+  S.capBusy=false;render();
+}
+function renderCapture(){
+  if(!S.capOpen)return '';
+  const f=S.capForm,m=S.capMeeting,disabled=S.capBusy?'disabled':'';
+  const field=(key,label,type='text',required=false)=>`<label style="display:block;margin:12px 0">${label}<input class="fi" type="${type}" ${required?'required':''} value="${esc(f[key])}" oninput="S.capForm.${key}=this.value" style="width:100%;margin-top:6px"></label>`;
+  const edit=(p,i,key,label,textarea=false)=>`<label style="display:block;margin:10px 0">${label}${textarea?`<textarea class="fi" rows="3" style="width:100%" oninput="S.capSuggestions[${i}].${key}=this.value">${esc(p[key]||'')}</textarea>`:`<input class="fi" style="width:100%" type="${key==='vencimiento'?'date':'text'}" value="${esc(p[key]||'')}" oninput="S.capSuggestions[${i}].${key}=this.value">`}</label>`;
+  return `<section style="margin:20px 0;padding:20px;border:1px solid var(--b);border-radius:12px">
+    <h3>${m?'Revisar reunión: '+esc(m.title):'Guardar una reunión'}</h3>
+    <button class="btn btn-ghost" ${disabled} onclick="closeCapture()">Cerrar</button>
+    ${S.capError?`<p role="alert" style="color:var(--rd)">${esc(S.capError)}</p>`:''}
+    ${S.capNotice?`<p role="status">${esc(S.capNotice)}</p>`:''}
+    ${S.capBusy?'<p role="status">Procesando…</p>':''}
+    ${!m?`<form id="capture-form" onsubmit="event.preventDefault();saveCapture()"><fieldset ${disabled} style="border:0;padding:0;margin:0;min-width:0">
+      ${field('title','Título','text',true)}${field('fecha','Fecha de la reunión (no de importación)','date',true)}
+      ${field('source','Origen: enlace de ChatGPT, grabación, notas propias…','text',true)}
+      <label style="display:block;margin:12px 0">Participantes (uno por línea)<textarea class="fi" rows="2" style="width:100%" oninput="S.capForm.participantes=this.value">${esc(f.participantes)}</textarea></label>
+      <label style="display:block;margin:12px 0">Transcripción o notas originales<textarea class="fi" required rows="10" style="width:100%" oninput="S.capForm.content=this.value">${esc(f.content)}</textarea></label>
+      <label><input type="checkbox" ${f.allow_ai?'checked':''} onchange="S.capForm.allow_ai=this.checked"> Permitir uso de esta reunión por IA, según los permisos del proyecto</label>
+      <p>Se conserva el texto original. Si pegás un resumen, registrá que esa es la fuente disponible.</p>
+      <button class="btn btn-primary" type="submit">Guardar original</button>
+    </fieldset></form>`:`
+      <p>${esc(m.fecha)} · Origen: ${esc(m.source)}</p>
+      <details><summary>Ver original para contrastar las propuestas</summary><pre style="white-space:pre-wrap;overflow-wrap:anywhere;font-family:inherit">${esc(m.content)}</pre></details>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin:16px 0">
+        ${m.allow_ai?`<button class="btn btn-ghost" ${disabled} onclick="suggestCapture()">Sugerir decisiones y acciones con IA</button>`:'<p>Esta fuente no permite procesamiento por IA. Podés registrar propuestas manuales.</p>'}
+        <button class="btn btn-ghost" ${disabled} onclick="addManualProposal()">Agregar propuesta manual</button>
+      </div>
+      <fieldset ${disabled} style="border:0;padding:0;min-width:0">
+      ${S.capSuggestions.map((p,i)=>`<article style="border-top:1px solid var(--b);padding:16px 0">
+        <label><input type="checkbox" ${p.selected?'checked':''} onchange="S.capSuggestions[${i}].selected=this.checked"> Guardar esta propuesta</label>
+        <label style="display:block;margin:12px 0">Tipo <select class="fi" onchange="S.capSuggestions[${i}].tipo=this.value"><option value="accion" ${p.tipo==='accion'?'selected':''}>Acción</option><option value="decision" ${p.tipo==='decision'?'selected':''}>Decisión</option></select></label>
+        ${edit(p,i,'title','Título')}${edit(p,i,'detalle','Qué se acordó',true)}${edit(p,i,'evidencia','Cita literal del original',true)}${edit(p,i,'responsable','Responsable (vacío si no consta)')}${edit(p,i,'vencimiento','Vencimiento (vacío si no consta)')}
+      </article>`).join('')}
+      ${S.capSuggestions.length?'<button class="btn btn-primary" onclick="saveCaptureProposals()">Guardar propuestas en Inbox</button>':''}
+      </fieldset>
+      <h4>Propuestas guardadas (${S.capProposals.length})</h4>
+      ${S.capProposals.map((p,i)=>`<article style="border-top:1px solid var(--b);padding:16px 0"><strong>${esc(p.title)}</strong> · ${esc(p.tipo)}
+        <p>${esc(p.detalle)}</p><blockquote style="white-space:pre-wrap">${esc(p.evidencia)}</blockquote>
+        <p>Responsable: ${esc(p.responsable||'Sin confirmar')} · Vencimiento: ${esc(p.vencimiento||'Sin confirmar')}</p>
+        ${p.review?`<p>${p.review==='approve'?'Aprobada':'Descartada'}${p.approved_path?' · '+esc(p.approved_path):''}</p>`:`<button class="btn btn-primary" ${disabled} onclick="reviewCaptureProposal(${i},'approve')">Aprobar ${p.tipo==='accion'?'como pendiente':'decisión'}</button> <button class="btn btn-ghost" ${disabled} onclick="reviewCaptureProposal(${i},'discard')">Descartar</button>`}
+      </article>`).join('')}
+    `}
+  </section>`;
+}
+
+// Memoria por proyecto: consulta sin modificar fuentes.
+S.memoryExport=''; S.memoryProjects=null; S.memoryData=null; S.memoryError=null; S.memoryLoading=false; S.memoryId='';
+let memoryRequest=0;
+async function loadMemoryProjects(){
+  S.memoryLoading=true;S.memoryError=null;render();
+  try{
+    const r=await api('/api/memory/projects/memory');
+    if(!r.ok)throw new Error('No se pudieron cargar los proyectos ('+r.status+').');
+    S.memoryProjects=await r.json();
+  }catch(e){S.memoryError=e.message}
+  S.memoryLoading=false;render();
+}
+async function selectMemory(id){
+  if(S.capBusy)return;
+  if(S.capOpen&&!S.capMeeting&&S.capForm.content&&!confirm('¿Cambiar de proyecto sin guardar la captura?')){render();return}
+  S.capOpen=false;S.capMeeting=null;S.capSuggestions=[];S.capProposals=[];
+  const request=++memoryRequest;
+  S.memoryId=id;S.memoryData=null;S.memoryError=null;S.memoryExport='';
+  S.memoryLoading=!!id;render();
+  if(!id)return;
+  try{
+    const r=await api('/api/memory/projects/'+encodeURIComponent(id)+'/memory');
+    if(!r.ok)throw new Error('No se pudo cargar la memoria ('+r.status+').');
+    const data=await r.json();
+    if(request===memoryRequest)S.memoryData=data;
+  }catch(e){if(request===memoryRequest)S.memoryError=e.message}
+  if(request===memoryRequest){S.memoryLoading=false;render()}
+}
+async function viewMemoryExport(){
+  const id=S.memoryId;if(!id)return;
+  try{
+    const r=await api('/api/memory/projects/'+encodeURIComponent(id)+'/memory.md');
+    if(!r.ok)throw new Error('No se pudo preparar el contexto ('+r.status+').');
+    const text=await r.text();if(S.memoryId!==id)return;
+    S.memoryExport=text;S.memoryError=null;
+  }catch(e){S.memoryError=e.message}
+  render();
+}
+async function exportMemory(){
+  const id=S.memoryId;if(!id)return;
+  try{
+    const r=await api('/api/memory/projects/'+encodeURIComponent(id)+'/memory.md');
+    if(!r.ok)throw new Error('No se pudo exportar la memoria ('+r.status+').');
+    const url=URL.createObjectURL(new Blob([await r.text()],{type:'text/markdown;charset=utf-8'}));
+    const a=document.createElement('a');a.href=url;a.download='memoria-'+id+'.md';
+    document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }catch(e){S.memoryError=e.message;render()}
+}
+function memoryOpenSource(index){const n=S.memoryData?.sources[index];if(n)openNote(n.id)}
+function renderMemory(){
+  const data=S.memoryData;
+  const groups=[['Ficha del proyecto',n=>n.id===data?.project_id],
+    ['Reuniones y registros',n=>['reunion','registro'].includes(n.tipo)],
+    ['Decisiones registradas',n=>n.tipo==='decision'],
+    ['Acciones registradas',n=>n.tipo==='accion'],
+    ['Otras fuentes vinculadas',n=>!['reunion','registro','decision','accion'].includes(n.tipo)&&n.id!==data?.project_id]];
+  return `<div class="memory-view" style="max-width:900px;margin:auto">
+    <h2>Memoria por proyecto</h2>
+    <p style="color:var(--tx2)">Reuniones, decisiones y acciones conectadas a sus fuentes. Elegí un proyecto para reconstruir su contexto.</p>
+    <label for="memory-project">Proyecto</label>
+    <select id="memory-project" ${S.capBusy?'disabled':''} class="fi" onchange="selectMemory(this.value)" style="margin:8px 0 16px;width:100%">
+      <option value="">Seleccionar proyecto…</option>
+      ${(S.memoryProjects||[]).map(n=>`<option value="${esc(n.id)}" ${n.id===S.memoryId?'selected':''}>${esc(n.title)} — ${esc(n.estado||'sin estado')}</option>`).join('')}
+    </select>
+    <button class="btn btn-ghost" onclick="loadMemoryProjects()">Actualizar proyectos</button>
+    ${S.memoryError?`<p role="alert">${esc(S.memoryError)}</p>`:''}
+    ${S.memoryLoading?'<p role="status">Cargando memoria…</p>':''}
+    ${S.memoryProjects?.length===0?'<p>No hay proyectos disponibles. Creá una ficha de tipo proyecto y vinculá sus fuentes.</p>':''}
+    ${data?`<h3>${esc(data.title)}</h3>
+      <button class="btn btn-primary" onclick="viewMemoryExport()">Ver contexto para copiar</button>
+      <button class="btn btn-ghost" onclick="exportMemory()">Descargar contexto para IA (.md)</button>
+      <button class="btn btn-ghost" ${S.capBusy?'disabled':''} onclick="beginCapture()">Agregar reunión</button>
+      ${S.memoryExport?`<label style="display:block;margin:16px 0">Contexto Markdown para cualquier IA<textarea class="fi" readonly rows="12" style="width:100%;margin-top:8px" onfocus="this.select()">${esc(S.memoryExport)}</textarea></label><p>Seleccioná el texto y copialo en la conversación que quieras usar.</p>`:''}
+      ${renderCapture()}
+      <p style="color:var(--tx2)">La exportación incluye solo fuentes habilitadas para IA. Los estados registrados deben verificarse antes de asumir que siguen vigentes.</p>
+      <details style="margin:16px 0"><summary>Alcance de esta memoria · ${data.sources.length} fuentes</summary><ul>${data.warnings.map(w=>`<li>${esc(w)}</li>`).join('')}</ul></details>
+      ${groups.map(([label,match])=>{
+        const rows=data.sources.map((n,i)=>({n,i})).filter(({n})=>match(n));
+        return `<section style="margin:24px 0"><h3>${label} (${rows.length})</h3>
+          ${rows.length?rows.map(({n,i})=>`<article style="border:1px solid var(--b);border-radius:10px;padding:16px;margin:10px 0">
+            <button class="btn btn-ghost" onclick="memoryOpenSource(${i})">${esc(n.title)}</button>
+            <p style="font-size:12px;color:var(--tx2)">${esc(n.fecha||'Sin fecha válida')} · ${esc(n.estado||'Sin estado')} · ${n.revisado?'Revisada':'Sin revisar'}</p>
+            <p>${esc(n.excerpt)}</p>
+            ${n.fuente_inmutable?`<button class="btn btn-ghost" ${S.capBusy?'disabled':''} onclick="reopenCapture(${i})">Revisar decisiones y acciones</button>`:''}
+            <small style="overflow-wrap:anywhere">${esc(n.path)} · ${esc(n.relation)}</small>
+          </article>`).join(''):'<p style="color:var(--tx2)">No hay fuentes vinculadas de este tipo. Esto no significa que no existan en el vault.</p>'}
+        </section>`;
+      }).join('')}`:''}
+  </div>`;
+}
+
+// ══════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════
+document.documentElement.setAttribute('data-theme',S.theme)
+// TODO: actividades guardadas en Markdown, con control de concurrencia.
+Object.assign(S,{todoItems:[],todoLoading:false,todoBusy:false,todoError:null,todoFilter:'abiertas',todoArea:'todas',todoQuery:'',todoForm:null,todoProjects:[]});
+async function loadTodo(){
+  S.todoLoading=true;S.todoError=null;render();
+  try{const [items,projects]=await Promise.all([captureJSON('/actions/todo'),captureJSON('/api/memory/projects/memory')]);S.todoItems=items;S.todoProjects=projects}
+  catch(e){S.todoError=e.message}
+  S.todoLoading=false;render();
+}
+function newTodo(){if(S.todoBusy)return;S.todoForm={request_id:crypto.randomUUID(),title:'',detalle:'',area:'Laboral',project_id:'',responsable:'',vencimiento:'',prioridad:'media'};S.todoError=null;render()}
+function editTodo(i){if(S.todoBusy)return;const t=S.todoItems[i];S.todoForm={...t,responsable:t.responsable||'',vencimiento:t.vencimiento||'',editing:true};render()}
+async function saveTodo(){
+  if(S.todoBusy||!document.getElementById('todo-form').reportValidity())return;
+  const f=S.todoForm;S.todoBusy=true;S.todoError=null;render();
+  try{
+    const payload=f.editing?{revision:f.revision,responsable:f.responsable||null,vencimiento:f.vencimiento||null,prioridad:f.prioridad}:{request_id:f.request_id,title:f.title,detalle:f.detalle,area:f.area,project_id:f.project_id||null,responsable:f.responsable||null,vencimiento:f.vencimiento||null,prioridad:f.prioridad};
+    await captureJSON('/actions/todo'+(f.editing?'/'+encodeURIComponent(f.id):''),{method:f.editing?'PATCH':'POST',body:JSON.stringify(payload)});
+    S.todoForm=null;await loadTodo();
+  }catch(e){S.todoError=e.message}
+  S.todoBusy=false;render();
+}
+async function todoState(i,state){
+  if(S.todoBusy)return;const t=S.todoItems[i];S.todoBusy=true;S.todoError=null;render();
+  try{const updated=await captureJSON('/actions/todo/'+encodeURIComponent(t.id),{method:'PATCH',body:JSON.stringify({revision:t.revision,estado:state})});S.todoItems[i]=updated}
+  catch(e){S.todoError=e.message}
+  S.todoBusy=false;render();
+}
+function todoFilter(value){S.todoFilter=value;render()}
+function todoDate(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
+function renderTodo(){
+  const today=todoDate(),done=S.todoItems.filter(t=>t.estado==='completado').length,overdue=S.todoItems.filter(t=>t.estado!=='completado'&&t.vencimiento&&t.vencimiento<today).length;
+  const items=S.todoItems.map((t,i)=>({...t,index:i})).filter(t=>(S.todoFilter==='todas'||(S.todoFilter==='hechas'?t.estado==='completado':S.todoFilter==='vencidas'?t.estado!=='completado'&&t.vencimiento&&t.vencimiento<today:t.estado!=='completado'))&&(S.todoArea==='todas'||t.area===S.todoArea)&&(!S.todoQuery||[t.title,t.responsable,...t.proyectos].join(' ').toLowerCase().includes(S.todoQuery.toLowerCase())));
+  const f=S.todoForm,disabled=S.todoBusy?'disabled':'';
+  return `<section class="todo-view" style="max-width:1100px;margin:auto;width:100%">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><div><h2 style="margin:0">TODO · Actividades</h2><p style="color:var(--tx2)">${S.todoItems.length-done} abiertas · ${overdue} vencidas · ${done} hechas</p></div><div style="display:flex;gap:8px"><button class="btn btn-ghost" onclick="loadTodo()" ${disabled}>Actualizar</button><button class="btn btn-primary" onclick="newTodo()" ${disabled}>+ Actividad</button></div></div>
+    <p style="color:var(--tx2);font-size:13px">Tus actividades personales y de trabajo. Las acciones aprobadas de reuniones aparecen acá con su fuente.</p>
+    ${S.todoError?`<p role="alert" style="color:var(--rd)">${esc(S.todoError)}</p>`:''}
+    ${f?`<form id="todo-form" onsubmit="event.preventDefault();saveTodo()" style="border:1px solid var(--b);border-radius:12px;padding:20px;margin:16px 0;display:grid;gap:12px">
+      <h3 style="margin:0">${f.editing?'Editar actividad':'Nueva actividad'}</h3>
+      <label>Actividad<input aria-label="Actividad" required maxlength="200" ${f.editing?'readonly':''} value="${esc(f.title)}" oninput="S.todoForm.title=this.value" style="width:100%"></label>
+      ${!f.editing?`<label>Detalle<textarea aria-label="Detalle" maxlength="20000" rows="3" oninput="S.todoForm.detalle=this.value" style="width:100%">${esc(f.detalle)}</textarea></label>
+      <div class="todo-fields"><label>Área<select aria-label="Área" onchange="S.todoForm.area=this.value">${['Laboral','Personal','Familia','Amigos','Apostolado'].map(a=>`<option ${f.area===a?'selected':''}>${a}</option>`).join('')}</select></label>
+      <label>Proyecto (opcional)<select aria-label="Proyecto" onchange="S.todoForm.project_id=this.value"><option value="">Sin proyecto</option>${S.todoProjects.map(p=>`<option value="${esc(p.id)}" ${f.project_id===p.id?'selected':''}>${esc(p.title)}</option>`).join('')}</select></label></div>`:''}
+      <div class="todo-fields"><label>Responsable<input aria-label="Responsable" maxlength="200" value="${esc(f.responsable)}" placeholder="Sin asignar" oninput="S.todoForm.responsable=this.value"></label>
+      <label>Vencimiento<input aria-label="Vencimiento" type="date" value="${esc(f.vencimiento)}" oninput="S.todoForm.vencimiento=this.value"></label>
+      <label>Prioridad<select aria-label="Prioridad" onchange="S.todoForm.prioridad=this.value">${['alta','media','baja'].map(p=>`<option ${f.prioridad===p?'selected':''}>${p}</option>`).join('')}</select></label></div>
+      <div><button class="btn btn-primary" type="submit" ${disabled}>${S.todoBusy?'Guardando…':'Guardar actividad'}</button> <button class="btn btn-ghost" type="button" ${disabled} onclick="S.todoForm=null;render()">Cancelar</button></div>
+    </form>`:''}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin:20px 0">
+      ${[['abiertas','Abiertas'],['vencidas','Vencidas'],['hechas','Hechas'],['todas','Todas']].map(([v,l])=>`<button class="btn ${S.todoFilter===v?'btn-primary':'btn-ghost'}" onclick="todoFilter('${v}')">${l}</button>`).join('')}
+      <select aria-label="Filtrar área" onchange="S.todoArea=this.value;render()"><option value="todas">Todas las áreas</option>${['Laboral','Personal','Familia','Amigos','Apostolado'].map(a=>`<option ${S.todoArea===a?'selected':''}>${a}</option>`).join('')}</select>
+      <input aria-label="Buscar actividades" placeholder="Actividad, proyecto o responsable" value="${esc(S.todoQuery)}" onchange="S.todoQuery=this.value;render()" style="flex:1;min-width:200px">
+    </div>
+    ${S.todoLoading?'<p role="status">Cargando actividades…</p>':items.length?items.map(t=>`<article style="border:1px solid var(--b);border-radius:10px;padding:16px;margin:10px 0;display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap">
+      <button class="btn btn-ghost" aria-label="${t.estado==='completado'?'Reabrir':'Completar'} ${esc(t.title)}" onclick="todoState(${t.index},'${t.estado==='completado'?'pendiente':'completado'}')" ${disabled}>${t.estado==='completado'?'✓':'○'}</button>
+      <div style="flex:1;min-width:180px"><strong style="${t.estado==='completado'?'text-decoration:line-through;opacity:.65':''}">${esc(t.title)}</strong><p style="font-size:12px;color:var(--tx2);margin:7px 0">${esc(t.area||'Sin área')} · ${esc(t.responsable||'Sin asignar')} · Prioridad ${esc(t.prioridad)}</p>
+      ${t.proyectos.length?`<p style="font-size:12px;margin:5px 0">${t.proyectos.map(p=>esc(p.replace(/\[\[|\]\]/g,''))).join(' · ')}</p>`:''}
+      <p style="font-size:12px;margin:5px 0;${t.estado!=='completado'&&t.vencimiento&&t.vencimiento<today?'color:var(--rd)':''}">${t.vencimiento?`${t.estado!=='completado'&&t.vencimiento<today?'Vencida · ':''}${esc(t.vencimiento)}`:'Sin vencimiento'}${t.fuente_ref?' · De una reunión':''}</p></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap"><select aria-label="Estado de ${esc(t.title)}" ${disabled} onchange="todoState(${t.index},this.value)">${[['pendiente','Pendiente'],['en_proceso','En curso'],['completado','Hecha']].map(([v,l])=>`<option value="${v}" ${t.estado===v?'selected':''}>${l}</option>`).join('')}</select><button class="btn btn-ghost" ${disabled} onclick="editTodo(${t.index})">Editar</button><button class="btn btn-ghost" onclick="openNote('${esc(t.id)}')">Ver nota</button></div>
+    </article>`).join(''):'<p style="padding:32px;border:1px dashed var(--b);border-radius:12px;color:var(--tx2)">No hay actividades en esta vista. Agregá una o aprobá una acción desde Memoria.</p>'}
+  </section>`;
+}
+
+const qsView=new URLSearchParams(location.search).get('view')
+if(qsView&&VIEWS.some(v=>v.id===qsView))S.view=qsView
+if(S.token){loadAll();if(S.view==='memoria')loadMemoryProjects();if(S.view==='todo')loadTodo();render()}else render()
+</script>
+</body>
+</html>
