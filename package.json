@@ -1,7 +1,9 @@
 {
   "scripts": {
     "dev": "tsx server.ts",
-    "build": "esbuild server.ts --bundle --platform=node --format=cjs --outfile=dist/server.cjs --external:express && cp index.html manifest.json icon.svg dist/"
+    "build": "node scripts/build.cjs",
+    "test:people": "node scripts/test-people-browser.cjs",
+    "test:meeting": "node scripts/test-meeting-proposals.cjs"
   },
   "dependencies": {
     "@google/genai": "^2.8.0",
@@ -12,6 +14,7 @@
     "@types/express": "^5.0.6",
     "@types/node": "^25.9.2",
     "esbuild": "^0.24.0",
+    "playwright": "1.62.1",
     "tsx": "^4.22.4"
   }
 }

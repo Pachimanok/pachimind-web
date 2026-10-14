@@ -14,6 +14,7 @@
   <link rel="apple-touch-icon" href="/icon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;0,9..144,700;1,9..144,400&family=DM+Sans:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/people.css">
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     :root{
@@ -298,12 +299,14 @@
 </head>
 <body>
 <div id="app" style="display:flex;width:100%;min-height:100vh"></div>
+<script src="/people.js"></script>
 <script>
 // ══════════════════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════════════════
 const S={
   token:sessionStorage.getItem('pm_token'),
+  people:newPeopleState(),
   view:'tablero',
   stats:null,drafts_count:0,
   areaFilter:'todos',
@@ -352,7 +355,8 @@ const VIEWS=[
   {id:'todo', icon:'✓', label:'TODO'},
   {id:'nueva',    icon:'✦', label:'Nueva nota'},
   {id:'reuniones',icon:'⏺', label:'Reuniones'},
-  {id:'entidades',icon:'◎', label:'Entidades'},
+  {id:'personas', icon:'◎', label:'Personas'},
+  {id:'entidades',icon:'◆', label:'Entidades'},
   {id:'inbox',    icon:'▽', label:'Inbox',badge:true},
   {id:'chat',     icon:'◉', label:'Chat IA'},
   {id:'vault',    icon:'⬡', label:'Vault'},
@@ -387,11 +391,11 @@ function render(){
       </div>
       <div class="sb-section">Navegación</div>
       ${VIEWS.map(v=>`
-        <div class="nav-item${S.view===v.id?' on':''}" onclick="setView('${v.id}')">
+        <button type="button" class="nav-item${S.view===v.id?' on':''}" onclick="setView('${v.id}')">
           <span class="ni-icon">${v.icon}</span>
           ${v.label}
           ${v.badge&&S.drafts_count>0?`<span class="ni-badge">${S.drafts_count}</span>`:''}
-        </div>`).join('')}
+        </button>`).join('')}
       ${S.stats?`
         <div class="sb-stats">
           <div class="sb-stat">Notas totales <span>${S.stats.total_notes}</span></div>
@@ -419,6 +423,7 @@ function render(){
           S.view==='todo'      ?renderTodo():
           S.view==='nueva'     ?renderNueva():
           S.view==='reuniones' ?renderReuniones():
+          S.view==='personas'  ?renderPeople():
           S.view==='entidades' ?renderEntidades():
           S.view==='vault'     ?renderVault():
           S.view==='chat'      ?renderChat():
@@ -429,6 +434,7 @@ function render(){
     </div>
     ${S.openNote?buildOverlayHTML():''}
   `
+  keepActiveNavVisible()
   if(S.openNote)document.getElementById('app').querySelector('.overlay-bg').onclick=closeNote
 }
 
@@ -454,7 +460,7 @@ async function doLogin(){
     const d=await r.json()
     if(!r.ok||!d.ok)throw new Error(d.error||'Contraseña incorrecta')
     S.token=d.token;sessionStorage.setItem('pm_token',d.token)
-    loadAll();if(S.view==='memoria')loadMemoryProjects();if(S.view==='todo')loadTodo()
+    loadAll();if(S.view==='memoria')loadMemoryProjects();if(S.view==='todo')loadTodo();if(S.view==='personas')loadPeople()
   }catch(e){S.loginError=e.message;render()}
 }
 function logout(){S.token=null;sessionStorage.removeItem('pm_token');S.loginError=null;render()}
@@ -1312,13 +1318,14 @@ async function detectEnSuggestions(){
   }catch(e){}
 }
 function setEnTab(t){S.enTab=t;render()}
-function startEnForm(){S.enForm={title:'',tipo:S.enTab==='organizacion'?'organizacion':S.enTab,area:'Laboral',organizacion:'',cliente:'',rol:'',tags:'',content:''};S.enError2=null;S.enEditing=null;S.enStep='form';render()}
+function startEnForm(){if(S.enTab==='persona'){setView('personas');S.people.newOpen=true;render();return}S.enForm={title:'',tipo:S.enTab==='organizacion'?'organizacion':S.enTab,area:'Laboral',organizacion:'',cliente:'',rol:'',tags:'',content:''};S.enError2=null;S.enEditing=null;S.enStep='form';render()}
 async function editEn(noteId){
   try{
     const r=await api(`/notes/${encodeURIComponent(noteId)}`)
     if(!r.ok)throw new Error()
     const n=await r.json()
     const m=n.metadata||{}
+    if(m.tipo==='persona'){setView('personas');await openPerson(noteId);startPersonEdit();return}
     const body=n.content||''
     const stripped=body.replace(/^---[\s\S]*?---\n?/,'').trim()
     S.enEditing=noteId
@@ -1357,7 +1364,7 @@ async function saveEnEdit(){
   }catch(e){S.enError2=e.message}
   S.enConfirming=false;render()
 }
-function prefillEnForm(name){S.enForm={title:name,tipo:'persona',area:'Laboral',organizacion:'Total Trade Group',cliente:'Total Trade Group',rol:'',tags:'TTG',content:''};S.enError2=null;S.enStep='form';S.enTab='persona';setView('entidades')}
+function prefillEnForm(name){setView('personas');S.people.newOpen=true;S.people.newName=name;S.people.newRequest=null;render()}
 async function guardarEntidad(){
   const f=S.enForm
   if(!f.title.trim()){S.enError2='El nombre es requerido';render();return}
@@ -1992,10 +1999,17 @@ function toggleTheme(){
 // ══════════════════════════════════════════════════════════
 // UTILS
 // ══════════════════════════════════════════════════════════
+function keepActiveNavVisible(){
+  if(!matchMedia('(max-width:700px)').matches)return
+  const nav=document.querySelector('.sidebar'),item=nav?.querySelector('.nav-item.on')
+  if(item)nav.scrollLeft=item.offsetLeft-nav.clientWidth/2+item.offsetWidth/2
+}
+window.addEventListener('resize',keepActiveNavVisible)
 function setView(v){
   S.view=v;S.openNote=null
   if(v==='memoria'&&S.memoryProjects===null)loadMemoryProjects()
   if(v==='todo')loadTodo()
+  if(v==='personas')loadPeople()
   if(v==='inbox'&&!S.ibDrafts.length)loadInbox()
   if(v==='entidades'&&!Object.keys(S.enList).length)loadEntidades()
   if(v==='nueva'){S.attachList=[];S.attachError=null}
@@ -2295,7 +2309,7 @@ function renderTodo(){
 
 const qsView=new URLSearchParams(location.search).get('view')
 if(qsView&&VIEWS.some(v=>v.id===qsView))S.view=qsView
-if(S.token){loadAll();if(S.view==='memoria')loadMemoryProjects();if(S.view==='todo')loadTodo();render()}else render()
+if(S.token){loadAll();if(S.view==='memoria')loadMemoryProjects();if(S.view==='todo')loadTodo();if(S.view==='personas')loadPeople();render()}else render()
 </script>
 </body>
 </html>
