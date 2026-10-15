@@ -47,6 +47,18 @@ const output=process.env.PEOPLE_SCREENSHOT_DIR||path.join(process.cwd(),'artifac
   await page.getByRole('button',{name:'Crear ficha mínima',exact:true}).click();
   await page.getByRole('heading',{name:'Persona manual de navegador (demo)',exact:true}).waitFor();
   await page.getByRole('button',{name:'Editar ficha',exact:true}).click();
+  // A long profile must keep its action reachable without scrolling down.
+  for(const viewport of [{width:1280,height:720},{width:390,height:844}]){
+   await page.setViewportSize(viewport);
+   const actions=page.locator('.people-editor-actions');
+   const button=actions.getByRole('button',{name:'Ver vista previa',exact:true});
+   const bounds=await button.boundingBox();
+   assert.ok(bounds&&bounds.y>=0&&bounds.y+bounds.height<=viewport.height-(viewport.width<=700?56:0),'Editor action is inside viewport and above navigation');
+   assert.ok(await button.evaluate(el=>{const r=el.getBoundingClientRect();return el.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2))}),'Editor action is not covered');
+   await page.screenshot({path:path.join(output,viewport.width<=700?'persona-edicion-mobile.png':'persona-edicion-desktop.png'),fullPage:true});
+  }
+  await page.setViewportSize({width:1440,height:1440});
+
   await page.getByLabel('Organización',{exact:true}).fill('Organización de prueba manual');
   await page.getByLabel('Función',{exact:true}).fill('Función confirmada manualmente');
   await page.getByLabel('Alias separados por coma').fill('Alias navegador');

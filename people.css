@@ -29,3 +29,9 @@ button.nav-item{border:0;background:transparent;text-align:left;width:100%;font:
 @media(max-width:640px){.people-grid,.people-form-grid{grid-template-columns:1fr}.people-header{align-items:flex-start;flex-direction:column;gap:15px}.people-header h1{font-size:31px}.people-controls{align-items:stretch;flex-direction:column}.people-results span:last-child{display:none}.people-facts>div{grid-template-columns:1fr;gap:6px}.people-panel,.people-editor{padding:18px}.people-inline,.people-relation{flex-wrap:wrap}.people-relation>div{min-width:180px}.people-change-head{flex-direction:column}.people-checkboxes{gap:8px 16px}}
 
 @media(max-width:700px){.sidebar{justify-content:flex-start;gap:2px}.sidebar button.nav-item{flex:0 0 76px;width:76px;min-width:76px;font-size:9px;white-space:nowrap;position:relative}.sidebar .nav-item .ni-icon{flex:none}}
+
+/* Keep editing actions reachable even in long profiles; leave space for fields. */
+.people-editor{padding-bottom:110px}
+.people-editor-actions{position:fixed;left:var(--sidebar);right:0;bottom:0;z-index:150;margin:0;padding:14px 28px;background:var(--bg2);border-top:1px solid var(--bb);box-shadow:0 -6px 20px #0003;align-items:center}
+.people-editor-actions .btn{min-height:44px}
+@media(max-width:700px){.people-editor-actions{left:0;bottom:56px;padding:10px 14px}.people-editor-actions .btn-primary{flex:1;white-space:normal}.people-editor{padding-bottom:140px}}
