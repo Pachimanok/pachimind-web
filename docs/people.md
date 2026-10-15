@@ -40,3 +40,10 @@ La regresión de propuestas de reuniones sigue en npm run test:meeting con prove
 simulado. Estado del archivo de entorno existente se conserva; no insertar claves
 en HTML, JS ni dist. Para deployment/reversión/migración y contratos de la capa de
 Personas, seguir docs/people-v1.md y ENDPOINTS.md de pachimind-api.
+
+Redes y contexto personal: edición de perfiles sociales (URL HTTPS), cumpleaños con
+año opcional y lista de datos generales con categoría, fecha, vigencia y estado.
+Usar fechas exactas para eventos; los pasados/vencidos se marcan para verificar.
+No hay recordatorios automáticos. Salud se registra manualmente con categoría salud:
+la ficha completa queda fuera de MCP/IA/public; la lectura humana personal conserva
+sus permisos. Nunca registrar datos de salud bajo otro campo para eludir protección.
