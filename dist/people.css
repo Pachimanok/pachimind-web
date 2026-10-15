@@ -35,3 +35,8 @@ button.nav-item{border:0;background:transparent;text-align:left;width:100%;font:
 .people-editor-actions{position:fixed;left:var(--sidebar);right:0;bottom:0;z-index:150;margin:0;padding:14px 28px;background:var(--bg2);border-top:1px solid var(--bb);box-shadow:0 -6px 20px #0003;align-items:center}
 .people-editor-actions .btn{min-height:44px}
 @media(max-width:700px){.people-editor-actions{left:0;bottom:56px;padding:10px 14px}.people-editor-actions .btn-primary{flex:1;white-space:normal}.people-editor{padding-bottom:140px}}
+
+/* Let Personas grow inside the main scroll area instead of clipping its form. */
+.main-content:has(.people-workspace){flex:1 0 auto;overflow:visible}
+.main-area:has(.people-workspace){scroll-padding-top:68px;scroll-padding-bottom:150px}
+.main-area:has(.people-workspace)>.topbar{flex-shrink:0}

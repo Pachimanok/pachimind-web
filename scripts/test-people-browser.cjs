@@ -56,6 +56,17 @@ const output=process.env.PEOPLE_SCREENSHOT_DIR||path.join(process.cwd(),'artifac
    assert.ok(bounds&&bounds.y>=0&&bounds.y+bounds.height<=viewport.height-(viewport.width<=700?56:0),'Editor action is inside viewport and above navigation');
    assert.ok(await button.evaluate(el=>{const r=el.getBoundingClientRect();return el.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2))}),'Editor action is not covered');
    await page.screenshot({path:path.join(output,viewport.width<=700?'persona-edicion-mobile.png':'persona-edicion-desktop.png'),fullPage:true});
+   // Wheel scrolling must reach the final input; Playwright fill alone can mask
+   // clipped overflow by scrolling a hidden ancestor programmatically.
+   await page.mouse.move(viewport.width-40,Math.floor(viewport.height/2));
+   await page.mouse.wheel(0,10000);
+   await page.waitForFunction(()=>{const area=document.querySelector('.main-area');return area.scrollTop>0},{},{timeout:3000});
+   const notes=page.getByLabel('Notas manuales',{exact:true});
+   assert.ok(await notes.evaluate(el=>{const r=el.getBoundingClientRect();return r.top>=52&&r.bottom<=document.querySelector('.people-editor-actions').getBoundingClientRect().top&&el.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2))}),'Last field is visible, reachable by wheel and not blocked by actions');
+   await notes.fill('Nota sintética editable al final del formulario');
+   await page.screenshot({path:path.join(output,viewport.width<=700?'persona-final-mobile.png':'persona-final-desktop.png'),fullPage:true});
+   await page.mouse.wheel(0,-10000);
+
   }
   await page.setViewportSize({width:1440,height:1440});
 
