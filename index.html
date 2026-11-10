@@ -15,6 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;0,9..144,700;1,9..144,400&family=DM+Sans:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/people.css">
+  <link rel="stylesheet" href="/associations.css">
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     :root{
@@ -300,6 +301,7 @@
 <body>
 <div id="app" style="display:flex;width:100%;min-height:100vh"></div>
 <script src="/people.js"></script>
+<script src="/associations.js"></script>
 <script>
 // ══════════════════════════════════════════════════════════
 // STATE
@@ -460,10 +462,10 @@ async function doLogin(){
     const d=await r.json()
     if(!r.ok||!d.ok)throw new Error(d.error||'Contraseña incorrecta')
     S.token=d.token;sessionStorage.setItem('pm_token',d.token)
-    loadAll();if(S.view==='memoria')loadMemoryProjects();if(S.view==='todo')loadTodo();if(S.view==='personas')loadPeople()
+    loadAll();if(S.view==='memoria')loadMemoryProjects();if(S.view==='todo')loadTodo();if(S.view==='personas')loadPeople();if(S.view==='vault')loadAssociationAudit()
   }catch(e){S.loginError=e.message;render()}
 }
-function logout(){S.token=null;sessionStorage.removeItem('pm_token');S.loginError=null;render()}
+function logout(){S.token=null;S.associations=newAssociationState();S.openAssociations=null;S.openNote=null;sessionStorage.removeItem('pm_token');S.loginError=null;render()}
 
 // ══════════════════════════════════════════════════════════
 // TABLERO
@@ -563,6 +565,7 @@ function buildOverlayHTML(){
             ${tags.map(t=>`<span class="tag ac">${t}</span>`).join('')}
             ${(m.tags||[]).map(t=>`<span class="tag">#${t}</span>`).join('')}
           </div>
+          ${renderNoteAssociations()}
           <div class="meta-grid">
             ${m.cliente?`<div class="mg"><div class="mg-k">Cliente</div><div class="mg-v">${esc(m.cliente)}</div></div>`:''}
             ${m.prioridad?`<div class="mg"><div class="mg-k">Prioridad</div><div class="mg-v">${esc(m.prioridad)}</div></div>`:''}
@@ -619,15 +622,19 @@ function buildOverlayHTML(){
 }
 
 async function openNote(id){
-  S.openNote={id,title:'...',metadata:{}};S.openLoading=true;render()
-  try{
-    const r=await api(`/notes/${encodeURIComponent(id)}`)
-    if(!r.ok)throw new Error()
-    S.openNote=await r.json()
-  }catch(e){S.openNote=null}
-  S.openLoading=false;render()
+  const request=(S.noteReadRequest||0)+1;S.noteReadRequest=request;
+  S.openNote={id,title:'...',metadata:{}};S.openLoading=true;S.openAssociations=null;S.associationError=null;render();
+  const [note,connections]=await Promise.allSettled([
+    associationJSON(`/notes/${encodeURIComponent(id)}`),
+    associationJSON(`/vault/associations/${encodeURIComponent(id)}`)
+  ]);
+  if(request!==S.noteReadRequest||S.openNote?.id!==id)return;
+  if(note.status==='fulfilled')S.openNote=note.value;else S.openNote=null;
+  if(connections.status==='fulfilled')S.openAssociations=connections.value;
+  else S.associationError='No se pudieron consultar las conexiones. Volvé a abrir la nota para reintentar.';
+  S.openLoading=false;render();
 }
-function closeNote(){S.openNote=null;render()}
+function closeNote(){S.noteReadRequest=(S.noteReadRequest||0)+1;S.openNote=null;S.openAssociations=null;render()}
 
 // ══════════════════════════════════════════════════════════
 // SEARCH
@@ -1458,11 +1465,12 @@ async function vlGenerate(dryRun){
 function renderVault(){
   const broken=S.vlBroken
   const gen=S.vlGenResult
-  return`<div class="form-wrap">
+  return`<div class="vault-layout">
     <div style="margin-bottom:24px">
       <div class="section-title">Vault</div>
-      <div style="font-size:13px;color:var(--tx2)">Sincronizacion de vinculos entre notas</div>
+      <div style="font-size:13px;color:var(--tx2)">Ámbitos, entidades y conexiones de tus notas</div>
     </div>
+    ${renderAssociationAudit()}
     <div style="background:var(--bg2);border:1px solid var(--b);border-radius:var(--rl);padding:18px;margin-bottom:16px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
         <div>
@@ -1478,7 +1486,7 @@ function renderVault(){
       ${broken?`
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:${broken.total?'12px':'0'}">
           <span style="font-size:22px;font-family:'Fraunces',serif;font-weight:700;color:${broken.total?'var(--rd)':'var(--ac2)'}">${broken.total}</span>
-          <span style="font-size:13px;color:var(--tx2)">${broken.total===0?'Sin vinculos rotos. El vault esta completamente conectado.':'vinculos rotos encontrados'}</span>
+          <span style="font-size:13px;color:var(--tx2)">${broken.total===0?'No se encontraron vínculos rotos. Consultá también las notas huérfanas.':'vinculos rotos encontrados'}</span>
         </div>
         ${broken.results.slice(0,8).map(b=>`
           <div style="display:flex;gap:8px;align-items:flex-start;padding:6px 0;border-bottom:1px solid var(--b);font-size:12px">
@@ -2009,6 +2017,7 @@ function setView(v){
   S.view=v;S.openNote=null
   if(v==='memoria'&&S.memoryProjects===null)loadMemoryProjects()
   if(v==='todo')loadTodo()
+  if(v==='vault')loadAssociationAudit()
   if(v==='personas')loadPeople()
   if(v==='inbox'&&!S.ibDrafts.length)loadInbox()
   if(v==='entidades'&&!Object.keys(S.enList).length)loadEntidades()
@@ -2309,7 +2318,7 @@ function renderTodo(){
 
 const qsView=new URLSearchParams(location.search).get('view')
 if(qsView&&VIEWS.some(v=>v.id===qsView))S.view=qsView
-if(S.token){loadAll();if(S.view==='memoria')loadMemoryProjects();if(S.view==='todo')loadTodo();if(S.view==='personas')loadPeople();render()}else render()
+if(S.token){loadAll();if(S.view==='memoria')loadMemoryProjects();if(S.view==='todo')loadTodo();if(S.view==='personas')loadPeople();if(S.view==='vault')loadAssociationAudit();render()}else render()
 </script>
 </body>
 </html>

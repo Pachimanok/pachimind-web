@@ -1,0 +1,68 @@
+const {chromium}=require('playwright');
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const origin=process.env.PEOPLE_PREVIEW_URL||'http://127.0.0.1:18300';
+assert.ok(['localhost','127.0.0.1'].includes(new URL(origin).hostname));
+const out=process.env.ASSOCIATION_SCREENSHOT_DIR||path.join(process.cwd(),'artifacts','associations');
+(async()=>{
+ const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||'/usr/bin/chromium',headless:true,args:['--no-sandbox']});
+ try{
+  const page=await browser.newPage({viewport:{width:1440,height:1000}});
+  const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  const writes=[];page.on('request',r=>{if(['POST','PUT','PATCH','DELETE'].includes(r.method())&&!r.url().endsWith('/api/auth'))writes.push(r.url())});
+  await page.goto(origin+'/?view=vault');await page.locator('#pwd').fill('preview-password');await page.getByRole('button',{name:'Entrar',exact:true}).click();
+  await page.getByRole('heading',{name:'Notas y sus asociaciones',exact:true}).waitFor();
+  await page.waitForFunction(()=>S.associations?.data&&!S.associations.loading);
+  const marker=await page.evaluate(async()=>await (await api('/health/preview')).json());assert.equal(marker.fixture,'association-demo');
+  const session=await page.evaluate(()=>sessionStorage.getItem('pm_token'));
+  const summary=await page.evaluate(()=>S.associations.data.summary);assert.ok(summary.notes>30);
+  assert.ok(await page.getByRole('button',{name:'Nota huérfana demo',exact:true}).count());
+  assert.equal(await page.getByRole('button',{name:'Referencia recibida demo',exact:true}).count(),0,'Incoming links prevent false orphan classification');
+  assert.equal(await page.locator('.association-audit img').count(),0);
+  fs.mkdirSync(out,{recursive:true});await page.screenshot({path:path.join(out,'huerfanas-escritorio.png'),fullPage:true});
+  await page.getByRole('button',{name:'Siguiente',exact:true}).click();
+  await page.waitForFunction(()=>S.associations.data.page===2&&!S.associations.loading);
+  await page.getByRole('button',{name:'Todas las notas',exact:true}).click();
+  await page.waitForFunction(()=>S.associations.data.page===1&&!S.associations.loading);
+  await page.locator('#association-query').fill('Referencia recibida');
+  await page.locator('#association-ambito').selectOption('Trabajo');
+  await page.getByRole('button',{name:'Filtrar notas',exact:true}).click();
+  await page.waitForFunction(()=>S.associations.data.total===1&&!S.associations.loading);
+  await page.getByRole('button',{name:'Referencia recibida demo',exact:true}).click();
+  await page.getByRole('heading',{name:'Ámbitos y conexiones',exact:true}).waitFor();
+  assert.equal(await page.locator('.note-associations').getByText('Trabajo',{exact:true}).count(),1);
+  assert.equal(await page.locator('.note-associations').getByText('Sin conexiones visibles',{exact:true}).count(),0);
+  assert.equal(await page.locator('.note-associations details').filter({has:page.locator('summary', {hasText:'A través de otras notas'})}).getAttribute('open'),'');
+  await page.locator('.note-associations').getByRole('button',{name:'Proyecto de ejemplo',exact:true}).waitFor();
+  assert.ok(await page.locator('.note-associations').getByRole('button',{name:'Puente demo',exact:true}).count());
+  await page.screenshot({path:path.join(out,'nota-contexto-escritorio.png'),fullPage:true});
+  await page.locator('.note-associations').getByRole('button',{name:'Proyecto de ejemplo',exact:true}).click();
+  await page.waitForFunction(()=>S.openNote?.title==='Proyecto de ejemplo'&&!S.openLoading&&S.openAssociations?.title==='Proyecto de ejemplo');
+  await page.locator('.op-close').click();
+  await page.getByRole('button',{name:'Referencias sin resolver',exact:true}).click();
+  await page.locator('#association-query').fill('');await page.locator('#association-ambito').selectOption('');
+  await page.getByRole('button',{name:'Filtrar notas',exact:true}).click();
+  await page.waitForFunction(()=>!S.associations.loading&&S.associations.view==='unresolved'&&S.associations.q==='');
+  await page.getByRole('button',{name:'Referencia sin destino demo',exact:true}).click();
+  await page.getByRole('heading',{name:'Ámbitos y conexiones',exact:true}).waitFor();
+  await page.locator('.note-associations summary').filter({hasText:'Referencias sin resolver'}).click();
+  await page.locator('.note-associations').getByText('Sin destino: Destino pendiente demo',{exact:true}).waitFor();
+  await page.locator('.op-close').click();
+  // An unavailable association response must not claim the note is orphaned.
+  await page.route('**/vault/associations/07-conocimiento-contexto-rota',r=>r.fulfill({status:503,body:'{}',contentType:'application/json'}));
+  await page.getByRole('button',{name:'Referencia sin destino demo',exact:true}).click();
+  await page.locator('.note-associations').getByText('No se pudieron consultar las conexiones. Volvé a abrir la nota para reintentar.',{exact:true}).waitFor();
+  assert.equal(await page.locator('.note-associations').getByText('Sin conexiones visibles',{exact:true}).count(),0);
+  await page.unroute('**/vault/associations/07-conocimiento-contexto-rota');await page.locator('.op-close').click();
+  await page.getByRole('button',{name:'Huérfanas',exact:true}).click();
+  await page.waitForFunction(()=>!S.associations.loading&&S.associations.view==='orphans');
+  for(const viewport of [{width:390,height:844},{width:768,height:1024}]){
+   await page.setViewportSize(viewport);await page.screenshot({path:path.join(out,'huerfanas-'+viewport.width+'.png'),fullPage:true});
+   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'No horizontal overflow');
+  }
+  assert.equal(await page.evaluate(()=>sessionStorage.getItem('pm_token')),session);
+  assert.deepEqual(writes,[],'Audit and navigation never write data');assert.deepEqual(errors,[]);
+  console.log('Browser OK: orphan/incoming distinction, all-note pagination, scope filters, direct/indirect context, navigable destinations, unresolved refs, failed lookup, XSS escaping, session preserved, mobile/tablet, no writes.');
+ }finally{await browser.close();}
+})().catch(e=>{console.error(e.stack);process.exitCode=1});

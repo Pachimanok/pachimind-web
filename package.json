@@ -3,7 +3,8 @@
     "dev": "tsx server.ts",
     "build": "node scripts/build.cjs",
     "test:people": "node scripts/test-people-browser.cjs",
-    "test:meeting": "node scripts/test-meeting-proposals.cjs"
+    "test:meeting": "node scripts/test-meeting-proposals.cjs",
+    "test:associations": "node scripts/test-associations-browser.cjs"
   },
   "dependencies": {
     "@google/genai": "^2.8.0",
