@@ -61,6 +61,9 @@ const out=process.env.ASSOCIATION_SCREENSHOT_DIR||path.join(process.cwd(),'artif
    await page.setViewportSize(viewport);await page.screenshot({path:path.join(out,'huerfanas-'+viewport.width+'.png'),fullPage:true});
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'No horizontal overflow');
   }
+  await page.getByRole('button',{name:'Revisar vínculos pendientes',exact:true}).click();
+  await page.getByRole('heading',{name:'Vínculos pendientes',exact:true}).waitFor();
+  await page.waitForFunction(()=>!linkReview.busy);
   assert.equal(await page.evaluate(()=>sessionStorage.getItem('pm_token')),session);
   assert.deepEqual(writes,[],'Audit and navigation never write data');assert.deepEqual(errors,[]);
   console.log('Browser OK: orphan/incoming distinction, all-note pagination, scope filters, direct/indirect context, navigable destinations, unresolved refs, failed lookup, XSS escaping, session preserved, mobile/tablet, no writes.');

@@ -3,4 +3,4 @@ const esbuild=require('esbuild');
 const fs=require('node:fs');
 fs.mkdirSync('dist',{recursive:true});
 esbuild.buildSync({entryPoints:['server.ts'],bundle:true,platform:'node',nodePaths:(process.env.NODE_PATH||'').split(require('node:path').delimiter).filter(Boolean),format:'cjs',outfile:'dist/server.cjs',external:['express']});
-for(const name of ['index.html','manifest.json','icon.svg','people.js','people.css','associations.js','associations.css'])fs.copyFileSync(name,'dist/'+name);
+for(const name of ['index.html','manifest.json','icon.svg','people.js','people.css','associations.js','associations.css','relationship-review.js'])fs.copyFileSync(name,'dist/'+name);

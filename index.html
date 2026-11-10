@@ -301,6 +301,7 @@
 <body>
 <div id="app" style="display:flex;width:100%;min-height:100vh"></div>
 <script src="/people.js"></script>
+<script src="/relationship-review.js?v=20261110-1"></script>
 <script src="/associations.js"></script>
 <script>
 // ══════════════════════════════════════════════════════════
@@ -358,6 +359,7 @@ const VIEWS=[
   {id:'nueva',    icon:'✦', label:'Nueva nota'},
   {id:'reuniones',icon:'⏺', label:'Reuniones'},
   {id:'personas', icon:'◎', label:'Personas'},
+  {id:'vinculos', icon:'↗', label:'Vínculos pendientes'},
   {id:'entidades',icon:'◆', label:'Entidades'},
   {id:'inbox',    icon:'▽', label:'Inbox',badge:true},
   {id:'chat',     icon:'◉', label:'Chat IA'},
@@ -426,6 +428,7 @@ function render(){
           S.view==='nueva'     ?renderNueva():
           S.view==='reuniones' ?renderReuniones():
           S.view==='personas'  ?renderPeople():
+          S.view==='vinculos' ?renderLinkReviews():
           S.view==='entidades' ?renderEntidades():
           S.view==='vault'     ?renderVault():
           S.view==='chat'      ?renderChat():
@@ -2019,6 +2022,7 @@ function setView(v){
   if(v==='todo')loadTodo()
   if(v==='vault')loadAssociationAudit()
   if(v==='personas')loadPeople()
+  if(v==='vinculos')loadLinkReviews()
   if(v==='inbox'&&!S.ibDrafts.length)loadInbox()
   if(v==='entidades'&&!Object.keys(S.enList).length)loadEntidades()
   if(v==='nueva'){S.attachList=[];S.attachError=null}
