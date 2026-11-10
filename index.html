@@ -16,6 +16,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;0,9..144,700;1,9..144,400&family=DM+Sans:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/people.css">
   <link rel="stylesheet" href="/associations.css">
+  <link rel="stylesheet" href="/human.css?v=20261110-human1">
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     :root{
@@ -301,7 +302,8 @@
 <body>
 <div id="app" style="display:flex;width:100%;min-height:100vh"></div>
 <script src="/people.js"></script>
-<script src="/relationship-review.js?v=20261110-1"></script>
+<script src="/human.js?v=20261110-human1"></script>
+<script src="/relationship-review.js?v=20261110-human1"></script>
 <script src="/associations.js"></script>
 <script>
 // ══════════════════════════════════════════════════════════
@@ -354,6 +356,7 @@ const S={
 
 const VIEWS=[
   {id:'tablero',  icon:'◈', label:'Tablero'},
+  {id:'humano',icon:'☑',label:'Humano'},
   {id:'memoria', icon:'◷', label:'Memoria'},
   {id:'todo', icon:'✓', label:'TODO'},
   {id:'nueva',    icon:'✦', label:'Nueva nota'},
@@ -395,9 +398,10 @@ function render(){
       </div>
       <div class="sb-section">Navegación</div>
       ${VIEWS.map(v=>`
-        <button type="button" class="nav-item${S.view===v.id?' on':''}" onclick="setView('${v.id}')">
+        <button type="button" aria-label="${esc(v.label)}" class="nav-item${S.view===v.id?' on':''}" onclick="setView('${v.id}')">
           <span class="ni-icon">${v.icon}</span>
           ${v.label}
+          ${v.id==='humano'?`<span id="human-nav-count" class="ni-badge" style="${humanState().countData?.total_pending?'':'display:none'}">${humanState().countData?.total_pending||0}</span>`:''}
           ${v.badge&&S.drafts_count>0?`<span class="ni-badge">${S.drafts_count}</span>`:''}
         </button>`).join('')}
       ${S.stats?`
@@ -423,6 +427,7 @@ function render(){
       <div class="main-content${S.view==='tags'?' full':''}">
         ${S.searchQ&&S.searchResults!==null?renderSearch():
           S.view==='tablero'   ?renderTablero():
+          S.view==='humano'    ?renderHuman():
           S.view==='memoria'   ?renderMemory():
           S.view==='todo'      ?renderTodo():
           S.view==='nueva'     ?renderNueva():
@@ -465,10 +470,10 @@ async function doLogin(){
     const d=await r.json()
     if(!r.ok||!d.ok)throw new Error(d.error||'Contraseña incorrecta')
     S.token=d.token;sessionStorage.setItem('pm_token',d.token)
-    loadAll();if(S.view==='memoria')loadMemoryProjects();if(S.view==='todo')loadTodo();if(S.view==='personas')loadPeople();if(S.view==='vault')loadAssociationAudit()
+    loadAll();if(S.view==='memoria')loadMemoryProjects();if(S.view==='todo')loadTodo();if(S.view==='personas')loadPeople();if(S.view==='vault')loadAssociationAudit();if(S.view==='humano')loadHuman();if(S.view==='vinculos')loadLinkReviews()
   }catch(e){S.loginError=e.message;render()}
 }
-function logout(){S.token=null;S.associations=newAssociationState();S.openAssociations=null;S.openNote=null;sessionStorage.removeItem('pm_token');S.loginError=null;render()}
+function logout(){S.token=null;S.human=newHumanState();S.associations=newAssociationState();S.openAssociations=null;S.openNote=null;sessionStorage.removeItem('pm_token');S.loginError=null;render()}
 
 // ══════════════════════════════════════════════════════════
 // TABLERO
@@ -1396,7 +1401,7 @@ function resetEn(){S.enStep='form';S.enForm={title:'',tipo:S.enTab,area:'Laboral
 // ══════════════════════════════════════════════════════════
 // DATA LOADING
 // ══════════════════════════════════════════════════════════
-async function loadAll(){loadStats();loadBoards();loadInbox();loadEntidades()}
+async function loadAll(){loadStats();loadBoards();loadInbox();loadEntidades();loadHumanCount()}
 
 async function loadStats(){
   try{const r=await api('/vault/stats');if(r.ok)S.stats=await r.json()}catch(e){}
@@ -2017,7 +2022,9 @@ function keepActiveNavVisible(){
 }
 window.addEventListener('resize',keepActiveNavVisible)
 function setView(v){
-  S.view=v;S.openNote=null
+  S.view=v;S.openNote=null;S.searchQ='';S.searchResults=null
+  const route=new URL(location.href);route.searchParams.set('view',v);history.replaceState(null,'',route)
+  if(v==='humano'){humanState().kind='all';humanState().page=1;loadHuman()}
   if(v==='memoria'&&S.memoryProjects===null)loadMemoryProjects()
   if(v==='todo')loadTodo()
   if(v==='vault')loadAssociationAudit()
@@ -2322,7 +2329,7 @@ function renderTodo(){
 
 const qsView=new URLSearchParams(location.search).get('view')
 if(qsView&&VIEWS.some(v=>v.id===qsView))S.view=qsView
-if(S.token){loadAll();if(S.view==='memoria')loadMemoryProjects();if(S.view==='todo')loadTodo();if(S.view==='personas')loadPeople();if(S.view==='vault')loadAssociationAudit();render()}else render()
+if(S.token){loadAll();if(S.view==='memoria')loadMemoryProjects();if(S.view==='todo')loadTodo();if(S.view==='personas')loadPeople();if(S.view==='vault')loadAssociationAudit();if(S.view==='humano')loadHuman();if(S.view==='vinculos')loadLinkReviews();render()}else render()
 </script>
 </body>
 </html>

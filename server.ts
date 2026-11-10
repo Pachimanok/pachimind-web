@@ -538,6 +538,29 @@ JSON a devolver:
     } catch (error) { res.status(502).json({ error: 'API no disponible; podés reintentar sin duplicar la captura.' }); }
   });
 
+  // Owner-session gateway for the human inbox. Never upgrades an external API key.
+  app.use('/api/human', async (req, res) => {
+    const token = (req.headers.authorization || '').replace('Bearer ', '');
+    if (!token || token !== authToken()) return res.status(401).json({ error: 'Iniciá sesión para revisar tus pendientes.' });
+    const suffix = req.originalUrl.slice('/api/human'.length);
+    const route = suffix.split('?')[0];
+    const readRoute = /^\/(?:queue|summary|items\/(?:links|person|meeting|note)\/[a-z0-9-]+|requests\/[a-f0-9-]{36})$/.test(route);
+    const writeRoute = /^\/items\/(?:links|person|meeting|note)\/[a-z0-9-]+\/decision$/.test(route);
+    if (!(req.method === 'GET' && readRoute || req.method === 'POST' && writeRoute)) return res.status(404).json({ error: 'Ruta de revisión no disponible.' });
+    try {
+      const upstream = await fetch(`${PM_API_URL}/human${suffix}`, {
+        method: req.method,
+        headers: { 'X-API-Key': PM_API_KEY, 'X-PachiMind-Actor': 'manual', 'Content-Type': 'application/json' },
+        body: req.method === 'POST' ? JSON.stringify(req.body) : undefined,
+        signal: AbortSignal.timeout(30000),
+      });
+      res.status(upstream.status).set('Cache-Control', 'no-store')
+        .set('Content-Type', upstream.headers.get('content-type') || 'application/json').send(await upstream.text());
+    } catch {
+      res.status(502).json({ error: req.method === 'POST' ? 'No se pudo confirmar el resultado. Comprobalo antes de volver a decidir.' : 'No se pudieron cargar los pendientes. Reintentá.' });
+    }
+  });
+
   // ── Proxy vault routes → pachimind-api ──────────────────────
   const VAULT_ROUTES = ["/notes", "/vault", "/search", "/projects", "/actions", "/decisions", "/people", "/clients", "/inbox", "/notebooklm", "/attachments", "/ai", "/system", "/health"];
 
@@ -577,9 +600,9 @@ JSON a devolver:
 
   // ── Static serving (production) ──────────────────────────────
   const distPath = path.join(process.cwd(), "dist");
-  app.use(express.static(distPath));
+  app.use(express.static(distPath,{setHeaders:(res,file)=>{if(file.endsWith('index.html'))res.set('Cache-Control','no-store');}}));
   app.get("/{*path}", (req, res) => {
-    res.sendFile(path.join(distPath, "index.html"));
+    res.set('Cache-Control','no-store').sendFile(path.join(distPath, "index.html"));
   });
 
   app.listen(PORT, process.env.HOST || "0.0.0.0", () => {

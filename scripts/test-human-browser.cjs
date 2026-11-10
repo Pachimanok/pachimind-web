@@ -1,0 +1,83 @@
+const {chromium}=require('playwright');
+const assert=require('node:assert/strict');const fs=require('node:fs');const path=require('node:path');
+const origin=process.env.HUMAN_PREVIEW_URL||'http://127.0.0.1:18301';
+assert.ok(['localhost','127.0.0.1'].includes(new URL(origin).hostname),'Synthetic loopback only');
+const out=process.env.HUMAN_SCREENSHOT_DIR||path.join(process.cwd(),'artifacts','human');
+(async()=>{
+ const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||'/usr/bin/chromium',headless:true,args:['--no-sandbox']});
+ try{
+  const page=await browser.newPage({viewport:{width:1440,height:1000}});const errors=[];page.setDefaultTimeout(12000);page.on('pageerror',e=>errors.push(e.message));
+  const writes=[];page.on('request',r=>{if(r.method()==='POST'&&r.url().includes('/api/human/'))writes.push(r.url())});
+  await page.goto(origin+'/?view=vinculos');await page.locator('#pwd').fill('preview-password');await page.getByRole('button',{name:'Entrar',exact:true}).click();
+  await page.getByRole('heading',{name:'Vínculos pendientes',exact:true}).waitFor();
+  const marker=await page.evaluate(async()=>await (await api('/health/preview')).json());assert.equal(marker.fixture,'human-demo');
+  await page.getByRole('heading',{name:'Vínculos pendientes',exact:true}).waitFor();
+  await page.waitForFunction(()=>S.human?.data&&!S.human.loading);assert.equal(await page.locator('.human-card').count(),3,'Deep link loads actual pending list automatically');
+  const session=await page.evaluate(()=>S.token);fs.mkdirSync(out,{recursive:true});
+  // The old reported failure: check must complete, then the checkbox and button work.
+  const first=await page.evaluate(()=>S.human.data.results.find(r=>r.kind==='links'));
+  await page.route('**/api/human/items/links/'+first.id,route=>route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({detail:'Comprobación no disponible (prueba sintética)'})}),{times:1});
+  await page.locator('.human-card').filter({has:page.getByRole('heading',{name:first.title,exact:true})}).getByRole('button',{name:'Revisar',exact:true}).click();
+  await page.locator('#human-detail').getByRole('alert').getByText('Comprobación no disponible (prueba sintética)',{exact:true}).waitFor();
+  await page.getByRole('button',{name:'Reintentar comprobación',exact:true}).click();
+  await page.locator('#human-detail').getByText('Revisiones comprobadas.',{exact:false}).waitFor();
+  await page.getByRole('button',{name:'Comprobar revisiones',exact:true}).click();
+  await page.waitForFunction(()=>!S.human.detailBusy&&S.human.detail?.validation.ok);
+  const authorize=page.getByLabel('Autorizar únicamente estos vínculos',{exact:true});assert.equal(await authorize.isDisabled(),false);
+  const apply=page.getByRole('button',{name:'Aplicar vínculos',exact:true});assert.equal(await apply.isDisabled(),true);
+  assert.equal(writes.length,0,'Opening and checking never approves');
+  await page.screenshot({path:path.join(out,'vinculos-comprobados.png'),fullPage:true});
+  await authorize.check();assert.equal(await apply.isEnabled(),true);
+  const original=await page.evaluate(async id=>(await peopleRequest('/notes/'+id)).content,first.source.id);
+  await apply.click();await page.getByText('Aprobado y verificado: '+first.title+'.',{exact:true}).waitFor();
+  assert.equal(await page.evaluate(async id=>(await peopleRequest('/notes/'+id)).content,first.source.id),original,'Immutable original preserved');
+  // Other demo links intentionally share the target: show stale revision visibly; allow decline.
+  const remaining=await page.evaluate(()=>S.human.data.results.find(r=>r.kind==='links'));
+  await page.locator('.human-card').filter({has:page.getByRole('heading',{name:remaining.title,exact:true})}).getByRole('button',{name:'Revisar',exact:true}).click();
+  await page.waitForFunction(()=>S.human.detail&&!S.human.detailBusy&&!S.human.detail.validation.ok);
+  assert.equal(await page.getByLabel('Autorizar únicamente estos vínculos',{exact:true}).isDisabled(),true);
+  assert.equal(await page.getByRole('button',{name:'Declinar',exact:true}).isEnabled(),true);
+  await page.getByRole('button',{name:'Declinar',exact:true}).click();await page.getByText('Declinado y verificado: '+remaining.title+'.',{exact:true}).waitFor();
+  await page.getByRole('button',{name:'Humano',exact:true}).click();await page.getByRole('heading',{name:'Humano',exact:true}).waitFor();
+  await page.waitForFunction(()=>S.human.data&&S.human.kind==='all'&&!S.human.loading);
+  assert.ok(await page.locator('#human-nav-count').innerText());
+  await page.screenshot({path:path.join(out,'humano-escritorio.png'),fullPage:true});
+  console.log('Links passed.');
+  // Meeting action approvals are explicit and land in TODO, decisions can be declined.
+  await page.getByRole('button',{name:/^Acciones y decisiones ·/}).click();await page.waitForFunction(()=>S.human.kind==='meeting'&&!S.human.loading);
+  await page.locator('.human-card').filter({has:page.getByRole('heading',{name:'Informe a aprobar (demo)',exact:true})}).getByRole('button',{name:'Revisar',exact:true}).click();
+  await page.getByLabel('Confirmo esta propuesta y su efecto',{exact:true}).check();await page.getByRole('button',{name:'Aprobar',exact:true}).click();
+  await page.getByText('Aprobado y verificado: Informe a aprobar (demo).',{exact:true}).waitFor();
+  await page.locator('.human-card').filter({has:page.getByRole('heading',{name:'Decisión a declinar (demo)',exact:true})}).getByRole('button',{name:'Revisar',exact:true}).click();
+  await page.getByRole('button',{name:'Declinar',exact:true}).click();await page.getByText('Declinado y verificado: Decisión a declinar (demo).',{exact:true}).waitFor();
+  console.log('Meeting decisions passed.');
+  // Questions are answered in a separate record, never silently approved as fields.
+  await page.getByRole('button',{name:/^Fichas y aclaraciones ·/}).click();await page.waitForFunction(()=>S.human.kind==='person'&&!S.human.loading);
+  const question=await page.evaluate(()=>S.human.data.results.find(r=>r.summary.startsWith('Preguntas')));
+  await page.locator('button[data-key="'+question.key+'"]').click();await page.getByLabel('Tu aclaración',{exact:true}).fill('Respuesta sintética confirmada para esta pregunta.');
+  await page.getByRole('button',{name:'Guardar aclaración',exact:true}).click();await page.getByText('Aclaración guardada y verificada: '+question.title+'.',{exact:true}).waitFor();
+  console.log('Questions passed.');
+  // Protected drafts can be reviewed by the owner without changing their IA permissions.
+  await page.getByRole('button',{name:/^Notas por revisar ·/}).click();await page.waitForFunction(()=>S.human.kind==='note'&&!S.human.loading);
+  await page.locator('#human-query').fill('Síntesis protegida');await page.getByRole('button',{name:'Buscar pendientes',exact:true}).click();
+  await page.waitForFunction(()=>!S.human.loading&&S.human.data.total===1);
+  await page.locator('.human-card').getByRole('button',{name:'Revisar',exact:true}).click();await page.getByLabel('Confirmo la revisión del contenido mostrado',{exact:true}).waitFor();
+  const draft=await page.evaluate(()=>S.human.detail);
+  assert.equal(draft.metadata.ia_indexar,false);
+  await page.getByLabel('Confirmo la revisión del contenido mostrado',{exact:true}).check();
+  // Lose the POST response after the backend commits. Receipt recovery must not repeat the write.
+  let posts=0;await page.route('**/api/human/items/note/*/decision',async route=>{posts++;await route.fetch();await route.abort('failed');},{times:1});
+  await page.getByRole('button',{name:'Aprobar',exact:true}).click();
+  await page.getByText('Aprobado y verificado: '+draft.title+'.',{exact:true}).waitFor();assert.equal(posts,1);
+  const persisted=await page.evaluate(async id=>await peopleRequest('/notes/'+id),draft.id);assert.equal(persisted.metadata.revisado,true);assert.equal(persisted.metadata.ia_indexar,false);
+  // Unauthorized API keys cannot impersonate the owner-session gateway.
+  const noSession=await page.evaluate(async()=>({none:(await fetch('/api/human/queue')).status,key:(await fetch('/api/human/queue',{headers:{'X-API-Key':'test-personal'}})).status}));assert.deepEqual(noSession,{none:401,key:401});
+  await page.locator('#human-query').fill('');await page.getByRole('button',{name:'Buscar pendientes',exact:true}).click();await page.waitForFunction(()=>!S.human.loading);
+  await page.reload();await page.getByRole('heading',{name:'Humano',exact:true}).waitFor();await page.waitForFunction(()=>S.human.data&&!S.human.loading);
+  assert.equal(await page.evaluate(()=>S.token),session,'Session preserved across reload and human decisions');
+  assert.equal(await page.locator('.human-workspace img').count(),0,'Untrusted note labels escape HTML');
+  for(const viewport of [{width:390,height:844},{width:768,height:1024}]){await page.setViewportSize(viewport);await page.screenshot({path:path.join(out,'humano-'+viewport.width+'.png'),fullPage:true});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);}
+  assert.deepEqual(errors,[]);
+  console.log('Human browser OK: direct-link loading, check/checkbox/apply, visible conflicts and decline, consolidated categories, meeting actions/decisions, questions, protected notes, lost-response recovery, owner-session auth, session/reload, XSS and mobile.');
+ }finally{await browser.close();}
+})().catch(e=>{console.error(e.stack);process.exitCode=1});
