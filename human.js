@@ -1,6 +1,6 @@
 // Human inbox: previews are reads; every decision needs a separate explicit action.
 const HUMAN_LABELS={all:'Todo',links:'Vínculos',person:'Fichas y aclaraciones',meeting:'Acciones y decisiones',note:'Notas por revisar'};
-function newHumanState(){return {kind:'all',q:'',page:1,data:null,loading:false,error:null,request:0,detail:null,detailKey:null,detailBusy:false,detailRequest:0,authorized:false,answer:'',busy:false,receipts:[],requests:{},uncertain:null,countData:null};}
+function newHumanState(){return {kind:'all',q:'',page:1,data:null,loading:false,error:null,request:0,detail:null,detailKey:null,detailBusy:false,detailRequest:0,authorized:false,answer:'',busy:false,receipts:[],requests:{},uncertain:null,countData:null,navigationNotice:null};}
 function humanState(){return S.human||(S.human=newHumanState());}
 function humanRender(){const el=document.querySelector('.main-content'),top=el?.scrollTop||0;render();const next=document.querySelector('.main-content');if(next)next.scrollTop=top;}
 async function humanRequest(path,options={}){
@@ -21,12 +21,29 @@ async function loadHuman(){
  catch(e){if(serial===h.request)h.error=e.message;}
  finally{if(serial===h.request){h.loading=false;humanRender();}}
 }
-function humanFilter(kind){const h=humanState();if(h.busy)return;h.kind=kind;h.page=1;h.detail=null;h.detailKey=null;h.authorized=false;loadHuman();}
-function humanSearch(){const h=humanState();h.q=document.getElementById('human-query').value;h.page=1;h.detail=null;h.detailKey=null;loadHuman();}
-function humanPage(delta){const h=humanState();h.page+=delta;h.detail=null;h.detailKey=null;loadHuman();}
+function humanResetDetail(){const h=humanState();++h.detailRequest;h.detail=null;h.detailKey=null;h.detailBusy=false;h.authorized=false;h.answer='';h.error=null;}
+function humanClose(){const h=humanState();if(h.busy)return;humanResetDetail();h.navigationNotice='Volviste a la lista. Los pendientes sin resolver se conservan.';humanRender();document.querySelector('.human-list')?.scrollIntoView({block:'start'});}
+async function humanContinue(){
+ const h=humanState();if(h.busy||h.loading||h.detailBusy||h.uncertain)return;
+ const data=h.data,index=data?.results.findIndex(i=>i.key===h.detailKey)??-1;
+ const next=index>=0?data.results[index+1]:data?.results[0];
+ humanResetDetail();const navigationSerial=h.detailRequest;h.navigationNotice='El pendiente anterior sigue pendiente. No se aprobó ni se declinó.';
+ if(next){await humanOpen(next.key,true);return;}
+ if(data&&data.page*data.per_page<data.total){
+  const kind=h.kind,q=h.q,page=++h.page;await loadHuman();
+  if(h.detailRequest!==navigationSerial||h.kind!==kind||h.q!==q||h.page!==page)return;
+  if(h.error){h.page=data.page;h.navigationNotice='No se pudo cargar la siguiente página. El pendiente se conserva; podés reintentar desde la lista.';humanRender();document.getElementById('human-feedback')?.scrollIntoView({block:'nearest'});return;}
+  if(h.data?.page===page&&h.data.results.length){await humanOpen(h.data.results[0].key,true);return;}
+ }
+ h.navigationNotice='Llegaste al final de esta vista. Los pendientes sin resolver siguen en la lista.';humanRender();document.getElementById('human-feedback')?.scrollIntoView({block:'nearest'});
+}
+function humanNavigation(){const h=humanState();return `<div class="human-navigation" aria-label="Continuar la revisión"><button type="button" class="btn btn-primary" onclick="humanContinue()" ${h.busy||h.loading||h.detailBusy||h.uncertain?'disabled':''}>Dejar pendiente y seguir</button><button type="button" class="btn btn-ghost" onclick="humanClose()" ${h.busy?'disabled':''}>Volver a la lista</button><small>Seguir conserva este pendiente, sin aprobarlo ni declinarlo.</small></div>`;}
+function humanFilter(kind){const h=humanState();if(h.busy||h.loading)return;humanResetDetail();h.navigationNotice=null;h.kind=kind;h.page=1;loadHuman();}
+function humanSearch(){const h=humanState();if(h.busy||h.loading)return;h.q=document.getElementById('human-query').value;humanResetDetail();h.navigationNotice=null;h.page=1;loadHuman();}
+function humanPage(delta){const h=humanState();if(h.busy||h.loading)return;humanResetDetail();h.navigationNotice=null;h.page=Math.max(1,h.page+delta);loadHuman();}
 function humanPath(key){const [kind,id]=key.split(':');return '/items/'+encodeURIComponent(kind)+'/'+encodeURIComponent(id);}
-async function humanOpen(key){
- const h=humanState();if(h.busy)return;const serial=++h.detailRequest;h.detailKey=key;h.detail=null;h.detailBusy=true;h.authorized=false;h.answer='';h.error=null;humanRender();document.getElementById('human-detail')?.scrollIntoView({block:'nearest'});
+async function humanOpen(key,keepNotice=false){
+ const h=humanState();if(h.busy||h.loading)return;if(!keepNotice)h.navigationNotice=null;const serial=++h.detailRequest;h.detailKey=key;h.detail=null;h.detailBusy=true;h.authorized=false;h.answer='';h.error=null;humanRender();document.getElementById('human-detail')?.scrollIntoView({block:'nearest'});
  try{const d=await humanRequest(humanPath(key));if(serial!==h.detailRequest||h.detailKey!==key)return;h.detail=d;}
  catch(e){if(serial===h.detailRequest)h.error=e.message;}
  finally{if(serial===h.detailRequest){h.detailBusy=false;humanRender();document.getElementById('human-detail')?.scrollIntoView({block:'nearest'});}}
@@ -59,31 +76,34 @@ async function humanCheckOutcome(){const h=humanState(),u=h.uncertain;if(!u||h.b
 function humanRetry(){const u=humanState().uncertain;if(u&&!humanState().busy)humanSend(u.payload,u.key,u.title);}
 function renderHumanDetail(d){
  const h=humanState(),questionsOnly=d.kind==='person'&&!Object.keys(d.fields||{}).length;
+ const index=h.data?.results.findIndex(i=>i.key===d.key)??-1;
+ const position=index>=0?((h.data.page-1)*h.data.per_page+index+1):null;
  const preview=d.kind==='links'?`<h3>Vínculos propuestos</h3>${d.links.map(l=>`<div class="human-change"><strong>${l.action==='remove'?'Quitar':'Agregar'}: ${esc(l.relation)}</strong><p>Destino: ${esc(l.target.title)}</p><small>${esc(l.target.path)}</small></div>`).join('')}`:
  d.kind==='person'?`<h3>Cambios propuestos</h3>${Object.entries(d.fields).map(([k,v])=>`<p><strong>${esc(PERSON_FIELDS[k]||k)}:</strong> ${esc(humanFieldValue(k,v))}</p>`).join('')}${d.questions.map(q=>`<p class="human-question">${esc(q)}</p>`).join('')}`:
  d.kind==='meeting'?`<h3>${d.proposal.tipo==='accion'?'Actividad propuesta':'Decisión propuesta'}</h3><p>${esc(d.proposal.detalle)}</p><p>Responsable: ${esc(d.proposal.responsable||'Sin asignar')} · Vencimiento: ${esc(d.proposal.vencimiento||'Sin fecha')}</p><blockquote>${esc(d.proposal.evidencia)}</blockquote>`:
  `<h3>Contenido para revisar</h3><pre class="human-original">${esc(d.content??d.excerpt??'Sin contenido disponible')}</pre><p class="human-muted">Acceso IA: ${d.metadata.ia_permiso==='allow'&&d.metadata.ia_indexar?'habilitado según los permisos actuales':'se conserva restringido'}. Revisar no cambia estos permisos.</p>`;
- return `<section id="human-detail" class="human-detail" aria-label="Detalle del pendiente"><div class="human-detail-head"><h2>${esc(d.title)}</h2><button type="button" class="btn btn-ghost" ${h.busy?'disabled':''} onclick="S.human.detailKey=null;S.human.detail=null;humanRender()">Cerrar detalle</button></div><p class="human-muted">${esc(d.source.path)}</p>${preview}
+ return `<section id="human-detail" class="human-detail" aria-label="Detalle del pendiente"><div class="human-detail-head"><h2>${esc(d.title)}</h2><button type="button" class="btn btn-ghost" ${h.busy?'disabled':''} onclick="humanClose()">Cerrar detalle</button></div><p class="human-muted">${position?`Pendiente ${position} de ${h.data.total} en esta vista · `:''}${esc(d.source.path)}</p>${h.navigationNotice?`<p role="status" class="human-navigation-notice">${esc(h.navigationNotice)}</p>`:''}${preview}
  ${(d.evidence||[]).map(e=>`<blockquote>${esc(e.quote)}<small>Fuente: ${esc(e.path||e.source_id)}${e.fecha?' · '+esc(e.fecha):''}</small></blockquote>`).join('')}
  <p class="human-effect"><strong>Al aprobar:</strong> ${esc(d.effect)}</p>${d.decline_effect?`<p class="human-muted"><strong>Al declinar:</strong> ${esc(d.decline_effect)}</p>`:''}
  <p role="status" class="human-check ${d.validation.ok?'ok':'blocked'}">${esc(d.validation.reason)}</p>
- <button type="button" class="btn btn-ghost" data-key="${esc(d.key)}" onclick="humanOpen(this.dataset.key)" ${h.busy?'disabled':''}>Comprobar revisiones</button>
+ ${!d.validation.ok&&!questionsOnly?'<p class="human-conflict-help">Esta comprobación no autoriza una propuesta desactualizada. Si la nota o sus relaciones cambiaron, hay que reformularla con la versión actual y volver a revisarla. Podés dejarla pendiente y seguir, o declinarla.</p>':''}
+ <button type="button" class="btn btn-ghost" data-key="${esc(d.key)}" onclick="humanOpen(this.dataset.key)" ${h.busy||h.loading?'disabled':''}>Comprobar revisiones</button>
  ${questionsOnly?`<label class="human-answer">Tu aclaración<textarea maxlength="10000" aria-label="Tu aclaración" ${h.busy||h.uncertain?'disabled':''} oninput="humanAnswer(this.value)">${esc(h.answer)}</textarea></label><button type="button" id="human-answer-save" class="btn btn-primary" onclick="humanDecide('answer')" ${!h.answer.trim()||h.busy||h.uncertain?'disabled':''}>Guardar aclaración</button>`:
  `<label class="human-authorize"><input type="checkbox" ${h.authorized?'checked':''} ${!d.validation.ok||h.busy||h.uncertain?'disabled':''} onchange="humanAuthorize(this.checked)">${d.kind==='links'?'Autorizar únicamente estos vínculos':d.kind==='person'?'Autorizar únicamente los campos mostrados':d.kind==='meeting'?'Confirmo esta propuesta y su efecto':'Confirmo la revisión del contenido mostrado'}</label>`}
  <div class="human-actions">${!questionsOnly?`<button type="button" class="btn btn-primary" onclick="humanDecide('approve')" ${!h.authorized||!d.validation.ok||h.busy||h.uncertain?'disabled':''}>${S.view==='vinculos'&&d.kind==='links'?'Aplicar vínculos':'Aprobar'}</button>`:''}<button type="button" class="btn btn-ghost" onclick="humanDecide('decline')" ${h.busy||h.uncertain?'disabled':''}>Declinar</button></div>
- ${!questionsOnly&&!h.authorized&&d.validation.ok?'<p class="human-muted">Marcá la autorización de lo mostrado para habilitar Aprobar.</p>':''}</section>`;
+ ${!questionsOnly&&!h.authorized&&d.validation.ok?'<p class="human-muted">Marcá la autorización de lo mostrado para habilitar Aprobar.</p>':''}${humanNavigation()}</section>`;
 }
 function renderHuman(heading='Humano'){
  const h=humanState(),d=h.data,counts=d?.counts||h.countData?.counts||{};
  return `<section class="human-workspace"><header class="human-header"><div><div class="human-eyebrow">TU DECISIÓN</div><h1>${esc(heading)}</h1><p>Lo que necesita que revises, apruebes, declines o aclares. Cada decisión tiene su vista previa.</p></div><button type="button" class="btn btn-ghost" onclick="loadHuman()" ${h.loading||h.busy?'disabled':''}>Actualizar pendientes</button></header>
- <div id="human-feedback">${h.receipts.map(r=>`<p role="status" class="human-receipt">${r.state==='approved'?'Aprobado y verificado':r.state==='declined'?'Declinado y verificado':'Aclaración guardada y verificada'}: ${esc(r.title)}.</p>`).join('')}
+ <div id="human-feedback">${h.navigationNotice&&!h.detail?`<p role="status" class="human-navigation-notice">${esc(h.navigationNotice)}</p>`:''}${h.receipts.map(r=>`<p role="status" class="human-receipt">${r.state==='approved'?'Aprobado y verificado':r.state==='declined'?'Declinado y verificado':'Aclaración guardada y verificada'}: ${esc(r.title)}.</p>`).join('')}
  ${h.error?`<p role="alert" class="human-alert">${esc(h.error)}</p>`:''}
  ${h.uncertain?`<div class="human-alert"><p>La respuesta fue incompleta. Comprobá el resultado antes de tomar otra decisión.</p><button type="button" class="btn btn-ghost" onclick="humanCheckOutcome()" ${h.busy?'disabled':''}>Comprobar resultado</button><button type="button" class="btn btn-ghost" onclick="humanRetry()" ${h.busy?'disabled':''}>Reintentar misma decisión</button></div>`:''}
- </div><div class="human-tabs" aria-label="Tipos de pendientes">${Object.entries(HUMAN_LABELS).map(([k,label])=>`<button type="button" class="btn ${h.kind===k?'btn-primary':'btn-ghost'}" aria-pressed="${h.kind===k}" data-kind="${k}" onclick="humanFilter(this.dataset.kind)" ${h.busy?'disabled':''}>${label}${k==='all'?d||h.countData?' · '+(d?.total_pending??h.countData.total_pending):'':' · '+(counts[k]||0)}</button>`).join('')}</div>
- <form class="human-search" onsubmit="event.preventDefault();humanSearch()"><label for="human-query">Buscar pendiente</label><div><input class="fi" id="human-query" maxlength="200" placeholder="Título o ruta" value="${esc(h.q)}" oninput="S.human.q=this.value"><button type="submit" class="btn btn-ghost" ${h.busy?'disabled':''}>Buscar pendientes</button></div></form>
+ </div><div class="human-tabs" aria-label="Tipos de pendientes">${Object.entries(HUMAN_LABELS).map(([k,label])=>`<button type="button" class="btn ${h.kind===k?'btn-primary':'btn-ghost'}" aria-pressed="${h.kind===k}" data-kind="${k}" onclick="humanFilter(this.dataset.kind)" ${h.busy||h.loading?'disabled':''}>${label}${k==='all'?d||h.countData?' · '+(d?.total_pending??h.countData.total_pending):'':' · '+(counts[k]||0)}</button>`).join('')}</div>
+ <form class="human-search" onsubmit="event.preventDefault();humanSearch()"><label for="human-query">Buscar pendiente</label><div><input class="fi" id="human-query" maxlength="200" placeholder="Título o ruta" value="${esc(h.q)}" oninput="S.human.q=this.value"><button type="submit" class="btn btn-ghost" ${h.busy||h.loading?'disabled':''}>Buscar pendientes</button></div></form>
  ${h.loading?'<p role="status">Cargando tus pendientes…</p>':d?`<p class="human-muted">${d.total} pendientes en esta vista · página ${d.page} de ${Math.max(1,Math.ceil(d.total/d.per_page))}. Se muestran sólo los permitidos para tu cuenta.</p>`:!h.error?'<p role="status">Consultando pendientes…</p>':''}
- ${h.detailBusy?'<section id="human-detail" class="human-detail"><p role="status">Comprobando la propuesta y sus revisiones…</p></section>':h.detailKey&&!h.detail?`<section id="human-detail" class="human-detail"><p role="alert" class="human-alert">${esc(h.error||'No se pudo abrir la propuesta.')}</p><button type="button" class="btn btn-ghost" data-key="${esc(h.detailKey)}" onclick="humanOpen(this.dataset.key)">Reintentar comprobación</button></section>`:''}
+ ${h.detailBusy?'<section id="human-detail" class="human-detail"><p role="status">Comprobando la propuesta y sus revisiones…</p></section>':h.detailKey&&!h.detail?`<section id="human-detail" class="human-detail"><p role="alert" class="human-alert">${esc(h.error||'No se pudo abrir la propuesta.')}</p><button type="button" class="btn btn-ghost" data-key="${esc(h.detailKey)}" onclick="humanOpen(this.dataset.key)">Reintentar comprobación</button>${humanNavigation()}</section>`:''}
  ${h.detail&&h.detailKey===h.detail.key?renderHumanDetail(h.detail):''}
- ${!h.loading&&d?`<div class="human-list">${d.results.map(i=>`<article class="human-card"><div><span class="human-kind">${esc(i.category)}</span><h2>${esc(i.title)}</h2><p>${esc(i.summary)}</p><small>${esc(i.source.path)}</small></div><button type="button" class="btn btn-ghost" data-key="${esc(i.key)}" onclick="humanOpen(this.dataset.key)" ${h.busy?'disabled':''}>Revisar</button></article>`).join('')||(!h.error?'<p class="human-empty">No hay pendientes en esta vista.</p>':'')}</div><footer class="human-pagination"><button type="button" class="btn btn-ghost" onclick="humanPage(-1)" ${h.page<=1||h.busy?'disabled':''}>Anterior</button><button type="button" class="btn btn-ghost" onclick="humanPage(1)" ${h.page*d.per_page>=d.total||h.busy?'disabled':''}>Siguiente</button></footer>`:''}
+ ${!h.loading&&d?`<div class="human-list">${d.results.map(i=>`<article class="human-card"><div><span class="human-kind">${esc(i.category)}</span><h2>${esc(i.title)}</h2><p>${esc(i.summary)}</p><small>${esc(i.source.path)}</small></div><button type="button" class="btn btn-ghost" data-key="${esc(i.key)}" onclick="humanOpen(this.dataset.key)" ${h.busy||h.loading?'disabled':''}>Revisar</button></article>`).join('')||(!h.error?'<p class="human-empty">No hay pendientes en esta vista.</p>':'')}</div><footer class="human-pagination"><button type="button" class="btn btn-ghost" onclick="humanPage(-1)" ${h.page<=1||h.busy||h.loading?'disabled':''}>Anterior</button><button type="button" class="btn btn-ghost" onclick="humanPage(1)" ${h.page*d.per_page>=d.total||h.busy||h.loading?'disabled':''}>Siguiente</button></footer>`:''}
  </section>`;
 }

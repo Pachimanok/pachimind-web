@@ -31,12 +31,24 @@ const out=process.env.HUMAN_SCREENSHOT_DIR||path.join(process.cwd(),'artifacts',
   const original=await page.evaluate(async id=>(await peopleRequest('/notes/'+id)).content,first.source.id);
   await apply.click();await page.getByText('Aprobado y verificado: '+first.title+'.',{exact:true}).waitFor();
   assert.equal(await page.evaluate(async id=>(await peopleRequest('/notes/'+id)).content,first.source.id),original,'Immutable original preserved');
+  await page.waitForFunction(key=>!S.human.loading&&!S.human.busy&&!S.human.data.results.some(i=>i.key===key),first.key);
   // Other demo links intentionally share the target: show stale revision visibly; allow decline.
   const remaining=await page.evaluate(()=>S.human.data.results.find(r=>r.kind==='links'));
   await page.locator('.human-card').filter({has:page.getByRole('heading',{name:remaining.title,exact:true})}).getByRole('button',{name:'Revisar',exact:true}).click();
   await page.waitForFunction(()=>S.human.detail&&!S.human.detailBusy&&!S.human.detail.validation.ok);
   assert.equal(await page.getByLabel('Autorizar únicamente estos vínculos',{exact:true}).isDisabled(),true);
   assert.equal(await page.getByRole('button',{name:'Declinar',exact:true}).isEnabled(),true);
+  const writesBeforeSkip=writes.length;
+  await page.getByRole('button',{name:'Dejar pendiente y seguir',exact:true}).click();
+  await page.waitForFunction(key=>!!S.human.detail&&!S.human.detailBusy&&S.human.detail.key!==key,remaining.key);
+  assert.equal(writes.length,writesBeforeSkip,'Skipping a conflict does not approve or decline anything');
+  assert.equal(await page.evaluate(key=>S.human.data.results.some(i=>i.key===key),remaining.key),true,'Skipped item stays pending');
+  assert.equal(await page.getByLabel('Autorizar únicamente estos vínculos',{exact:true}).isChecked(),false,'Navigation never carries authorization');
+  await page.locator('#human-detail').getByText('El pendiente anterior sigue pendiente. No se aprobó ni se declinó.',{exact:true}).waitFor();
+  await page.getByRole('button',{name:'Volver a la lista',exact:true}).click();
+  assert.equal(await page.locator('#human-detail').count(),0);
+  await page.locator('.human-card button[data-key="'+remaining.key+'"]').click();
+  await page.waitForFunction(()=>!!S.human.detail&&!S.human.detailBusy);
   await page.getByRole('button',{name:'Declinar',exact:true}).click();await page.getByText('Declinado y verificado: '+remaining.title+'.',{exact:true}).waitFor();
   await page.getByRole('button',{name:'Humano',exact:true}).click();await page.getByRole('heading',{name:'Humano',exact:true}).waitFor();
   await page.waitForFunction(()=>S.human.data&&S.human.kind==='all'&&!S.human.loading);
@@ -76,6 +88,29 @@ const out=process.env.HUMAN_SCREENSHOT_DIR||path.join(process.cwd(),'artifacts',
   await page.reload();await page.getByRole('heading',{name:'Humano',exact:true}).waitFor();await page.waitForFunction(()=>S.human.data&&!S.human.loading);
   assert.equal(await page.evaluate(()=>S.token),session,'Session preserved across reload and human decisions');
   assert.equal(await page.locator('.human-workspace img').count(),0,'Untrusted note labels escape HTML');
+  // Skip across pages and at the final/only item without losing pending entries or writing.
+  await page.getByRole('button',{name:/^Notas por revisar ·/}).click();await page.waitForFunction(()=>S.human.kind==='note'&&!S.human.loading);
+  const lastOnPage=await page.evaluate(()=>S.human.data.results.at(-1));const navWrites=writes.length;
+  await page.locator('.human-card button[data-key="'+lastOnPage.key+'"]').click();await page.waitForFunction(()=>!!S.human.detail&&!S.human.detailBusy);
+  await page.route('**/api/human/queue**',route=>route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({detail:'Página siguiente no disponible (prueba sintética)'})}),{times:1});
+  await page.getByRole('button',{name:'Dejar pendiente y seguir',exact:true}).click();
+  await page.getByRole('alert').getByText('Página siguiente no disponible (prueba sintética)',{exact:true}).waitFor();
+  assert.equal(await page.evaluate(()=>S.human.page),1,'Failed navigation keeps the current page');
+  await page.locator('.human-card button[data-key="'+lastOnPage.key+'"]').click();await page.waitForFunction(()=>!!S.human.detail&&!S.human.detailBusy);
+  await page.getByRole('button',{name:'Dejar pendiente y seguir',exact:true}).click();
+  await page.waitForFunction(()=>S.human.page===2&&S.human.detail?.key===S.human.data.results[0]?.key&&!S.human.detailBusy);
+  await page.getByRole('button',{name:'Volver a la lista',exact:true}).click();
+  const final=await page.evaluate(()=>S.human.data.results.at(-1));
+  await page.locator('.human-card button[data-key="'+final.key+'"]').click();await page.waitForFunction(()=>!!S.human.detail&&!S.human.detailBusy);
+  await page.getByRole('button',{name:'Dejar pendiente y seguir',exact:true}).click();
+  await page.getByText('Llegaste al final de esta vista. Los pendientes sin resolver siguen en la lista.',{exact:true}).waitFor();
+  assert.equal(await page.locator('#human-detail').count(),0);
+  await page.locator('#human-query').fill('Nota pendiente demo 0');await page.getByRole('button',{name:'Buscar pendientes',exact:true}).click();await page.waitForFunction(()=>!S.human.loading&&S.human.data.total===1);
+  await page.locator('.human-card').getByRole('button',{name:'Revisar',exact:true}).click();await page.waitForFunction(()=>!!S.human.detail&&!S.human.detailBusy);
+  await page.getByRole('button',{name:'Dejar pendiente y seguir',exact:true}).click();
+  assert.equal(await page.locator('#human-detail').count(),0);assert.equal(await page.locator('.human-card').count(),1,'Single skipped item remains available');
+  assert.equal(writes.length,navWrites,'Navigation, including page failures, is read-only');
+  console.log('Conflict/next-page/final/single-item navigation passed without writes.');
   for(const viewport of [{width:390,height:844},{width:768,height:1024}]){await page.setViewportSize(viewport);await page.screenshot({path:path.join(out,'humano-'+viewport.width+'.png'),fullPage:true});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);}
   assert.deepEqual(errors,[]);
   console.log('Human browser OK: direct-link loading, check/checkbox/apply, visible conflicts and decline, consolidated categories, meeting actions/decisions, questions, protected notes, lost-response recovery, owner-session auth, session/reload, XSS and mobile.');
