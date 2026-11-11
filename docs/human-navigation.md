@@ -88,3 +88,30 @@ respuesta, reintentar el mismo formulario conserva el ID y no duplica la activid
 
 Assets 20261111-human7, API coordinada para origen/revisión/permisos. Sólo requiere
 reinicio de API; Node sirve los assets sin reiniciar, y MCP/OAuth quedan conservados.
+
+## Desplazamiento en todas las listas
+
+Assets `20261111-scroll-all`: el contenido normal crece dentro de `.main-area`,
+que es el contenedor de desplazamiento de la página. El flex anterior lo comprimía
+con `overflow:hidden`, recortando las listas largas de Humano y otras vistas.
+La barra superior conserva su altura; el espacio inferior permite llegar a los
+últimos controles sobre la navegación móvil.
+
+Tags y Chat mantienen paneles acotados con scroll interno: cada columna de Tags
+se desplaza por separado, y el cuadro para escribir del Chat permanece accesible.
+La búsqueda global usa el scroll normal incluso desde Tags o Chat. Redibujar la
+misma vista conserva la posición; cambiar de vista la reinicia. Abrir/cerrar una
+nota conserva la posición de la lista de origen.
+
+`npm run test:list-scroll` usa sólo la demo local sintética (`HUMAN_PREVIEW_URL`)
+y prueba rueda real, gestos táctiles móviles, acceso al último elemento, ausencia
+de solapamientos y conservación de posición. Cubre Humano (pendientes, aprobadas,
+opcionales), Vínculos, Tablero expandido, Memoria, TODO, Personas, Entidades,
+Inbox, Reuniones (notebooks y fuentes), Vault, Sistema, búsqueda global,
+ambos paneles de Tags, Chat y el detalle de una nota. No crea ni aprueba datos.
+No sustituye los gestos por `scrollIntoView`, que puede mover contenedores recortados
+y ocultar el problema. Capturas fuera del repositorio: `LIST_SCREENSHOT_DIR`.
+
+Publicación: únicamente `dist/human.js` y `dist/index.html`, con respaldo/hash
+previo y verificación HTTPS. No requiere reiniciar servicios. Rollback restaura
+sólo esos dos assets; no restaurar el vault ni cambiar permisos OAuth.

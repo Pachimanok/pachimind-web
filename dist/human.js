@@ -2,7 +2,7 @@
 const HUMAN_LABELS={all:'Decisiones pendientes',links:'Vínculos',person:'Fichas y aclaraciones',meeting:'Acciones y decisiones',note:'Revisión opcional'};
 function newHumanState(){return {kind:'all',q:'',page:1,data:null,loading:false,error:null,request:0,detail:null,detailKey:null,detailBusy:false,detailRequest:0,authorized:false,answer:'',busy:false,receipts:[],requests:{},uncertain:null,countData:null,navigationNotice:null,refreshRequests:{},optionalHidden:false,optionalRequests:{},showSaved:new URLSearchParams(location.search).get('human')==='aprobadas',savedData:null,savedKind:'all',savedQuery:'',savedPage:1};}
 function humanState(){return S.human||(S.human=newHumanState());}
-function humanRender(){const el=document.querySelector('.main-content'),top=el?.scrollTop||0;render();const next=document.querySelector('.main-content');if(next)next.scrollTop=top;}
+function humanRender(){const el=document.querySelector('.main-area'),top=el?.scrollTop||0;render();const next=document.querySelector('.main-area');if(next)next.scrollTop=top;}
 async function humanRequest(path,options={}){
  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),25000);
  try{
