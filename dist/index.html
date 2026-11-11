@@ -16,7 +16,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;0,9..144,700;1,9..144,400&family=DM+Sans:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/people.css">
   <link rel="stylesheet" href="/associations.css">
-  <link rel="stylesheet" href="/human.css?v=20261111-human5">
+  <link rel="stylesheet" href="/human.css?v=20261111-human6">
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     :root{
@@ -302,8 +302,8 @@
 <body>
 <div id="app" style="display:flex;width:100%;min-height:100vh"></div>
 <script src="/people.js"></script>
-<script src="/human.js?v=20261111-human5"></script>
-<script src="/relationship-review.js?v=20261111-human5"></script>
+<script src="/human.js?v=20261111-human6"></script>
+<script src="/relationship-review.js?v=20261111-human6"></script>
 <script src="/associations.js"></script>
 <script>
 // ══════════════════════════════════════════════════════════
@@ -2023,10 +2023,10 @@ function keepActiveNavVisible(){
 window.addEventListener('resize',keepActiveNavVisible)
 function setView(v){
   S.view=v;S.openNote=null;S.searchQ='';S.searchResults=null
-  const route=new URL(location.href);route.searchParams.set('view',v);history.replaceState(null,'',route)
-  if(v==='humano'){humanState().kind='all';humanState().page=1;loadHuman()}
+  const route=new URL(location.href);route.searchParams.set('view',v);route.searchParams.delete('human');history.replaceState(null,'',route)
+  if(v==='humano'){humanState().showSaved=false;humanState().kind='all';humanState().page=1;loadHuman()}
   if(v==='memoria'&&S.memoryProjects===null)loadMemoryProjects()
-  if(v==='todo')loadTodo()
+  if(v==='todo'){S.todoFocusId=null;loadTodo()}
   if(v==='vault')loadAssociationAudit()
   if(v==='personas')loadPeople()
   if(v==='vinculos')loadLinkReviews()
@@ -2266,12 +2266,15 @@ function renderMemory(){
 // ══════════════════════════════════════════════════════════
 document.documentElement.setAttribute('data-theme',S.theme)
 // TODO: actividades guardadas en Markdown, con control de concurrencia.
-Object.assign(S,{todoItems:[],todoLoading:false,todoBusy:false,todoError:null,todoFilter:'abiertas',todoArea:'todas',todoQuery:'',todoForm:null,todoProjects:[]});
+Object.assign(S,{todoItems:[],todoLoading:false,todoBusy:false,todoError:null,todoFilter:'abiertas',todoArea:'todas',todoQuery:'',todoForm:null,todoProjects:[],todoFocusId:null});
 async function loadTodo(){
   S.todoLoading=true;S.todoError=null;render();
   try{const [items,projects]=await Promise.all([captureJSON('/actions/todo'),captureJSON('/api/memory/projects/memory')]);S.todoItems=items;S.todoProjects=projects}
   catch(e){S.todoError=e.message}
-  S.todoLoading=false;render();
+  S.todoLoading=false;
+  if(S.todoFocusId&&!S.todoError&&!S.todoItems.some(t=>t.id===S.todoFocusId))S.todoError='Esta actividad ya no está disponible en TODO. Podés actualizar la lista o volver al registro de aprobadas.';
+  render();
+  if(S.view==='todo'&&S.todoFocusId){const target=Array.from(document.querySelectorAll('[data-todo-id]')).find(el=>el.dataset.todoId===S.todoFocusId);target?.scrollIntoView({block:'center'});target?.focus({preventScroll:true});}
 }
 function newTodo(){if(S.todoBusy)return;S.todoForm={request_id:crypto.randomUUID(),title:'',detalle:'',area:'Laboral',project_id:'',responsable:'',vencimiento:'',prioridad:'media'};S.todoError=null;render()}
 function editTodo(i){if(S.todoBusy)return;const t=S.todoItems[i];S.todoForm={...t,responsable:t.responsable||'',vencimiento:t.vencimiento||'',editing:true};render()}
@@ -2317,7 +2320,7 @@ function renderTodo(){
       <select aria-label="Filtrar área" onchange="S.todoArea=this.value;render()"><option value="todas">Todas las áreas</option>${['Laboral','Personal','Familia','Amigos','Apostolado'].map(a=>`<option ${S.todoArea===a?'selected':''}>${a}</option>`).join('')}</select>
       <input aria-label="Buscar actividades" placeholder="Actividad, proyecto o responsable" value="${esc(S.todoQuery)}" onchange="S.todoQuery=this.value;render()" style="flex:1;min-width:200px">
     </div>
-    ${S.todoLoading?'<p role="status">Cargando actividades…</p>':items.length?items.map(t=>`<article style="border:1px solid var(--b);border-radius:10px;padding:16px;margin:10px 0;display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap">
+    ${S.todoLoading?'<p role="status">Cargando actividades…</p>':items.length?items.map(t=>`<article data-todo-id="${esc(t.id)}" tabindex="-1" class="${S.todoFocusId===t.id?'todo-focused':''}" style="border:1px solid var(--b);border-radius:10px;padding:16px;margin:10px 0;display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap">
       <button class="btn btn-ghost" aria-label="${t.estado==='completado'?'Reabrir':'Completar'} ${esc(t.title)}" onclick="todoState(${t.index},'${t.estado==='completado'?'pendiente':'completado'}')" ${disabled}>${t.estado==='completado'?'✓':'○'}</button>
       <div style="flex:1;min-width:180px"><strong style="${t.estado==='completado'?'text-decoration:line-through;opacity:.65':''}">${esc(t.title)}</strong><p style="font-size:12px;color:var(--tx2);margin:7px 0">${esc(t.area||'Sin área')} · ${esc(t.responsable||'Sin asignar')} · Prioridad ${esc(t.prioridad)}</p>
       ${t.proyectos.length?`<p style="font-size:12px;margin:5px 0">${t.proyectos.map(p=>esc(p.replace(/\[\[|\]\]/g,''))).join(' · ')}</p>`:''}

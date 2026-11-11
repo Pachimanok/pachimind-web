@@ -56,3 +56,19 @@ el ID y recuperan el mismo recibo, sin repetir operaciones ni decisiones.
 
 Assets 20261111-human5 y gateway/API coordinados. Sólo API y Node requieren reinicio;
 MCP/OAuth conservados. La publicación no ejecuta limpiezas sobre datos reales.
+
+## Destinos de acciones y decisiones
+
+Tras aprobar una propuesta de reunión, el recibo permite abrir su resultado:
+Ver en TODO enfoca la actividad real, sin completarla ni crear otra. Ver decisión
+abre el registro guardado. Ver proyecto abre su memoria, y Ver reunión la fuente.
+
+Ver acciones y decisiones aprobadas muestra resultados persistentes de reuniones,
+con filtros por tipo/título/proyecto y paginación. Enlace guardable:
+/?view=humano&human=aprobadas. Recargar conserva esa vista y la sesión. Pendientes
+y descartadas no se mezclan con los registros aprobados. Toda navegación es lectura.
+Los registros previos se resuelven por el circuito de aprobación existente, sin
+migrar ni modificar sus notas o recibos. Se mantienen los controles de permisos.
+
+Assets 20261111-human6, con API/gateway coordinados. Requiere reiniciar API/Node;
+MCP/OAuth intactos. No se ejecutan aprobaciones ni creaciones en producción al probar.

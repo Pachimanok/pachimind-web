@@ -1,6 +1,6 @@
 // Human inbox: previews are reads; every decision needs a separate explicit action.
 const HUMAN_LABELS={all:'Decisiones pendientes',links:'Vínculos',person:'Fichas y aclaraciones',meeting:'Acciones y decisiones',note:'Revisión opcional'};
-function newHumanState(){return {kind:'all',q:'',page:1,data:null,loading:false,error:null,request:0,detail:null,detailKey:null,detailBusy:false,detailRequest:0,authorized:false,answer:'',busy:false,receipts:[],requests:{},uncertain:null,countData:null,navigationNotice:null,refreshRequests:{},optionalHidden:false,optionalRequests:{}};}
+function newHumanState(){return {kind:'all',q:'',page:1,data:null,loading:false,error:null,request:0,detail:null,detailKey:null,detailBusy:false,detailRequest:0,authorized:false,answer:'',busy:false,receipts:[],requests:{},uncertain:null,countData:null,navigationNotice:null,refreshRequests:{},optionalHidden:false,optionalRequests:{},showSaved:new URLSearchParams(location.search).get('human')==='aprobadas',savedData:null,savedKind:'all',savedQuery:'',savedPage:1};}
 function humanState(){return S.human||(S.human=newHumanState());}
 function humanRender(){const el=document.querySelector('.main-content'),top=el?.scrollTop||0;render();const next=document.querySelector('.main-content');if(next)next.scrollTop=top;}
 async function humanRequest(path,options={}){
@@ -16,6 +16,7 @@ async function humanRequest(path,options={}){
 function humanBadge(data){humanState().countData=data;const badge=document.getElementById('human-nav-count');if(badge){badge.textContent=data.total_pending;badge.style.display=data.total_pending?'':'none';}}
 async function loadHumanCount(){if(!S.token)return;try{humanBadge(await humanRequest('/summary'));}catch{const badge=document.getElementById('human-nav-count');if(badge){badge.textContent='!';badge.style.display='';badge.title='No se pudo actualizar el contador de pendientes';}}}
 async function loadHuman(){
+ if(humanState().showSaved&&S.view==='humano')return loadHumanSaved();
  const h=humanState(),serial=++h.request;h.loading=true;h.error=null;humanRender();
  try{const d=await humanRequest('/queue?'+new URLSearchParams({kind:h.kind,q:h.q,page:h.page,per_page:15,hidden:h.kind==='note'&&h.optionalHidden?'true':'false'}));if(serial!==h.request)return;h.data=d;humanBadge(d);}
  catch(e){if(serial===h.request)h.error=e.message;}
@@ -53,7 +54,7 @@ function humanAnswer(value){const h=humanState();h.answer=value;const button=doc
 function humanFieldValue(key,value){return typeof personalFieldText==='function'?personalFieldText(key,value):typeof value==='object'?JSON.stringify(value):String(value??'Sin dato');}
 function humanReceipt(data,title){
  const h=humanState();if(!data.verified||!['approved','declined','answered'].includes(data.state))throw new Error('El resultado todavía no está confirmado.');
- h.navigationNotice=null;h.receipts.push({id:data.id,kind:data.kind,state:data.state,title});h.receipts=h.receipts.slice(-5);h.detail=null;h.detailKey=null;h.uncertain=null;h.authorized=false;
+ h.navigationNotice=null;h.receipts.push({id:data.id,kind:data.kind,state:data.state,title,destination:data.destination||null});h.receipts=h.receipts.slice(-5);h.detail=null;h.detailKey=null;h.uncertain=null;h.authorized=false;
 }
 async function humanSend(payload,key,title){
  const h=humanState();h.busy=true;h.error=null;humanRender();
@@ -114,6 +115,41 @@ async function humanOptionalClean(){
  finally{h.busy=false;humanRender();document.getElementById('human-feedback')?.scrollIntoView({block:'nearest'});}
 }
 
+function humanSavedRoute(saved){const route=new URL(location.href);route.searchParams.set('view','humano');if(saved)route.searchParams.set('human','aprobadas');else route.searchParams.delete('human');history.replaceState(null,'',route);}
+function humanShowSaved(){const h=humanState();if(h.busy||h.loading)return;S.view='humano';S.openNote=null;S.searchQ='';S.searchResults=null;humanResetDetail();h.navigationNotice=null;h.showSaved=true;h.savedPage=1;humanSavedRoute(true);loadHumanSaved();}
+function humanShowPending(){const h=humanState();if(h.busy||h.loading)return;h.showSaved=false;h.kind='meeting';h.page=1;humanSavedRoute(false);loadHuman();}
+async function loadHumanSaved(){
+ const h=humanState(),serial=++h.request;h.loading=true;h.error=null;humanRender();
+ try{const data=await humanRequest('/meeting-results?'+new URLSearchParams({kind:h.savedKind,q:h.savedQuery,page:h.savedPage,per_page:15}));if(serial===h.request&&h.showSaved)h.savedData=data;}
+ catch(e){if(serial===h.request)h.error=e.message;}
+ finally{if(serial===h.request){h.loading=false;humanRender();}}
+}
+function humanSavedFilter(kind){const h=humanState();if(h.busy||h.loading)return;h.savedKind=kind;h.savedPage=1;loadHumanSaved();}
+function humanSavedSearch(){const h=humanState();if(h.loading)return;h.savedQuery=document.getElementById('human-saved-query').value;h.savedPage=1;loadHumanSaved();}
+function humanSavedPage(delta){const h=humanState();if(h.loading)return;h.savedPage+=delta;loadHumanSaved();}
+function humanDestinationLabel(d){return d.view==='todo'?'Ver en TODO':d.tipo==='decision'?'Ver decisión':'Ver registro';}
+function humanGoDestination(d,where='result'){
+ if(!d)return;
+ if(where==='source'){openNote(d.source.id);return;}
+ if(where==='project'){setView('memoria');selectMemory(d.project.id);return;}
+ if(d.view==='todo'){
+  S.todoFilter='todas';S.todoArea='todas';S.todoQuery='';S.todoForm=null;
+  setView('todo');S.todoFocusId=d.id;render();
+ }else openNote(d.id);
+}
+function humanOpenReceipt(index,where){humanGoDestination(humanState().receipts[index]?.destination,where);}
+function humanOpenSaved(index,where){humanGoDestination(humanState().savedData?.results[index],where);}
+function humanResultLinks(d,index,saved=false){const fn=saved?'humanOpenSaved':'humanOpenReceipt';return `<div class="human-result-links"><button type="button" class="btn btn-primary" onclick="${fn}(${index},'result')">${humanDestinationLabel(d)}</button><button type="button" class="btn btn-ghost" onclick="${fn}(${index},'project')">Ver proyecto</button><button type="button" class="btn btn-ghost" onclick="${fn}(${index},'source')">Ver reunión</button></div>`;}
+function renderHumanReceipts(){return humanState().receipts.map((r,index)=>`<div role="status" class="human-receipt"><p>${r.state==='approved'?'Aprobado y verificado':r.state==='declined'?'Declinado y verificado':'Aclaración guardada y verificada'}: ${esc(r.title)}.</p>${r.destination?`<p class="human-muted">${r.destination.tipo==='accion'?(r.destination.view==='todo'?'Guardada en TODO como actividad. Estado actual: '+esc(r.destination.estado)+'.':'Actividad guardada.'):'Guardada como decisión del proyecto.'}</p>${humanResultLinks(r.destination,index)}`:''}</div>`).join('');}
+function renderHumanSaved(){
+ const h=humanState(),data=h.savedData;
+ return `<section class="human-workspace"><header class="human-header"><div><div class="human-eyebrow">RESULTADOS GUARDADOS</div><h1>Acciones y decisiones aprobadas</h1><p>Las acciones se consultan en TODO; las decisiones quedan registradas en su proyecto. Aprobar una acción no la completa.</p></div><div class="human-result-links"><button type="button" class="btn btn-ghost" onclick="humanShowPending()" ${h.loading?'disabled':''}>Volver a pendientes</button><button type="button" class="btn btn-ghost" onclick="loadHumanSaved()" ${h.loading?'disabled':''}>Actualizar aprobadas</button></div></header>
+ ${h.error?`<p role="alert" class="human-alert">${esc(h.error)}</p>`:''}
+ <div class="human-tabs">${[['all','Todas'],['accion','Acciones en TODO'],['decision','Decisiones registradas']].map(([kind,label])=>`<button type="button" class="btn ${h.savedKind===kind?'btn-primary':'btn-ghost'}" onclick="humanSavedFilter('${kind}')" ${h.loading?'disabled':''}>${label}</button>`).join('')}</div>
+ <form class="human-search" onsubmit="event.preventDefault();humanSavedSearch()"><label for="human-saved-query">Buscar por título o proyecto</label><div><input class="fi" id="human-saved-query" maxlength="200" value="${esc(h.savedQuery)}"><button type="submit" class="btn btn-ghost" ${h.loading?'disabled':''}>Buscar aprobadas</button></div></form>
+ ${h.loading?'<p role="status">Cargando resultados guardados…</p>':data?`<p class="human-muted">${data.total} resultados · página ${data.page} de ${Math.max(1,Math.ceil(data.total/data.per_page))}.</p><div class="human-list">${data.results.map((d,index)=>`<article class="human-card human-saved-card"><span class="human-kind">${d.tipo==='accion'?'Acción aprobada':'Decisión registrada'}</span><h2>${esc(d.title)}</h2><p>Proyecto: ${esc(d.project.title)}</p><p>Estado registrado: ${esc(d.estado)}${d.tipo==='accion'?' · '+esc(d.responsable||'Sin asignar')+' · '+(d.vencimiento?esc(d.vencimiento):'Sin vencimiento'):''}</p><small>Reunión de origen: ${esc(d.source.title)}</small>${humanResultLinks(d,index,true)}</article>`).join('')||'<p class="human-empty">No hay resultados aprobados disponibles en esta vista. Las propuestas pendientes no aparecen acá.</p>'}</div><footer class="human-pagination"><button type="button" class="btn btn-ghost" onclick="humanSavedPage(-1)" ${data.page<=1?'disabled':''}>Anterior</button><button type="button" class="btn btn-ghost" onclick="humanSavedPage(1)" ${data.page*data.per_page>=data.total?'disabled':''}>Siguiente</button></footer>`:''}</section>`;
+}
+
 function renderHumanDetail(d){
  const h=humanState(),questionsOnly=d.kind==='person'&&!Object.keys(d.fields||{}).length;
  const index=h.data?.results.findIndex(i=>i.key===d.key)??-1;
@@ -135,9 +171,10 @@ function renderHumanDetail(d){
  ${!questionsOnly&&!h.authorized&&d.validation.ok?'<p class="human-muted">Marcá la autorización de lo mostrado para habilitar Aprobar.</p>':''}${humanNavigation()}</section>`;
 }
 function renderHuman(heading='Humano'){
+ if(humanState().showSaved&&S.view==='humano')return renderHumanSaved();
  const h=humanState(),d=h.data,counts=d?.counts||h.countData?.counts||{};
- return `<section class="human-workspace"><header class="human-header"><div><div class="human-eyebrow">TU DECISIÓN</div><h1>${esc(heading)}</h1><p>Decisiones concretas sobre vínculos, fichas y propuestas. Cada aprobación tiene su vista previa.</p></div><button type="button" class="btn btn-ghost" onclick="loadHuman()" ${h.loading||h.busy?'disabled':''}>Actualizar pendientes</button></header>
- <div id="human-feedback">${h.navigationNotice&&!h.detail?`<p role="status" class="human-navigation-notice">${esc(h.navigationNotice)}</p>`:''}${h.receipts.map(r=>`<p role="status" class="human-receipt">${r.state==='approved'?'Aprobado y verificado':r.state==='declined'?'Declinado y verificado':'Aclaración guardada y verificada'}: ${esc(r.title)}.</p>`).join('')}
+ return `<section class="human-workspace"><header class="human-header"><div><div class="human-eyebrow">TU DECISIÓN</div><h1>${esc(heading)}</h1><p>Decisiones concretas sobre vínculos, fichas y propuestas. Cada aprobación tiene su vista previa.</p></div><div class="human-result-links"><button type="button" class="btn btn-ghost" onclick="humanShowSaved()" ${h.loading||h.busy?'disabled':''}>Ver acciones y decisiones aprobadas</button><button type="button" class="btn btn-ghost" onclick="loadHuman()" ${h.loading||h.busy?'disabled':''}>Actualizar pendientes</button></div></header>
+ <div id="human-feedback">${h.navigationNotice&&!h.detail?`<p role="status" class="human-navigation-notice">${esc(h.navigationNotice)}</p>`:''}${renderHumanReceipts()}
  ${h.error?`<p role="alert" class="human-alert">${esc(h.error)}</p>`:''}
  ${h.uncertain?`<div class="human-alert"><p>La respuesta fue incompleta. Comprobá el resultado antes de tomar otra decisión.</p><button type="button" class="btn btn-ghost" onclick="humanCheckOutcome()" ${h.busy?'disabled':''}>Comprobar resultado</button><button type="button" class="btn btn-ghost" onclick="humanRetry()" ${h.busy?'disabled':''}>Reintentar misma decisión</button></div>`:''}
  </div><div class="human-tabs" aria-label="Tipos de pendientes">${Object.entries(HUMAN_LABELS).map(([k,label])=>`<button type="button" class="btn ${h.kind===k?'btn-primary':'btn-ghost'}" aria-pressed="${h.kind===k}" data-kind="${k}" onclick="humanFilter(this.dataset.kind)" ${h.busy||h.loading?'disabled':''}>${label}${k==='all'?d||h.countData?' · '+(d?.total_pending??h.countData.total_pending):'':' · '+(counts[k]||0)}</button>`).join('')}</div>

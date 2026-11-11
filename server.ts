@@ -544,7 +544,7 @@ JSON a devolver:
     if (!token || token !== authToken()) return res.status(401).json({ error: 'Iniciá sesión para revisar tus pendientes.' });
     const suffix = req.originalUrl.slice('/api/human'.length);
     const route = suffix.split('?')[0];
-    const readRoute = /^\/(?:queue|summary|items\/(?:links|person|meeting|note)\/[a-z0-9-]+|requests\/[a-f0-9-]{36})$/.test(route);
+    const readRoute = /^\/(?:queue|summary|meeting-results|items\/(?:links|person|meeting|note)\/[a-z0-9-]+|requests\/[a-f0-9-]{36})$/.test(route);
     const writeRoute = /^(?:\/items\/(?:links|person|meeting|note)\/[a-z0-9-]+\/decision|\/items\/links\/[a-z0-9-]+\/refresh|\/optional-notes\/visibility)$/.test(route);
     if (!(req.method === 'GET' && readRoute || req.method === 'POST' && writeRoute)) return res.status(404).json({ error: 'Ruta de revisión no disponible.' });
     try {
