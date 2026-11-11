@@ -115,7 +115,27 @@ const out=process.env.HUMAN_SCREENSHOT_DIR||path.join(process.cwd(),'artifacts',
   assert.equal(await page.evaluate(()=>S.token),session,'Approved-results view survives reload and preserves session');
   assert.equal(writes.length,beforeResultNavigation,'Viewing approved results, projects and sources performs no writes');
   const resultAuth=await page.evaluate(async()=>({none:(await fetch('/api/human/meeting-results')).status,key:(await fetch('/api/human/meeting-results',{headers:{'X-API-Key':'test-personal'}})).status}));assert.deepEqual(resultAuth,{none:401,key:401});
-  await page.getByRole('button',{name:'Volver a pendientes',exact:true}).click();await page.waitForFunction(()=>!S.human.loading&&!S.human.showSaved);
+  // Turn a recorded decision into a separate editable TODO only after explicit Save.
+  const originalDecision=await page.evaluate(async id=>await peopleRequest('/notes/'+id),decisionDestination.id);
+  const taskPosts=[];page.on('request',r=>{if(r.method()==='POST'&&new URL(r.url()).pathname==='/actions/todo')taskPosts.push(r.postDataJSON())});
+  await page.getByRole('button',{name:'Decisiones registradas',exact:true}).click();await page.waitForFunction(()=>!S.human.loading&&S.human.savedKind==='decision');
+  await page.locator('.human-saved-card').getByRole('button',{name:'Crear tarea desde esta decisión',exact:true}).click();
+  await page.locator('#todo-form').waitFor();await page.waitForFunction(()=>!S.todoLoading);
+  assert.equal(taskPosts.length,0,'Opening the conversion form does not create a task');
+  assert.equal(await page.getByLabel('Responsable',{exact:true}).inputValue(),'');assert.equal(await page.getByLabel('Vencimiento',{exact:true}).inputValue(),'');
+  assert.equal(await page.getByLabel('Proyecto',{exact:true}).isDisabled(),true);
+  await page.getByLabel('Actividad',{exact:true}).fill('Actividad desde acuerdo demo');await page.getByLabel('Detalle',{exact:true}).fill('Trabajo definido por el usuario de la prueba.');
+  await page.route('**/actions/todo',async route=>{await route.fetch();await route.abort('failed');},{times:1});
+  await page.getByRole('button',{name:'Guardar actividad',exact:true}).click();await page.waitForFunction(()=>!S.todoBusy&&!!S.todoError&&!!S.todoForm);
+  await page.getByRole('button',{name:'Guardar actividad',exact:true}).click();await page.waitForFunction(()=>!S.todoBusy&&!S.todoLoading&&!S.todoForm&&S.todoItems.some(t=>t.title==='Actividad desde acuerdo demo'));
+  assert.equal(taskPosts.length,2);assert.equal(new Set(taskPosts.map(p=>p.request_id)).size,1,'Retry reuses the original task creation ID');
+  const derivedTask=await page.evaluate(id=>S.todoItems.filter(t=>t.source_decision_id===id),decisionDestination.id);assert.equal(derivedTask.length,1);
+  assert.equal(derivedTask[0].estado,'pendiente');assert.equal(derivedTask[0].responsable,null);assert.equal(derivedTask[0].vencimiento,null);
+  const afterDecision=await page.evaluate(async id=>await peopleRequest('/notes/'+id),decisionDestination.id);
+  assert.equal(afterDecision.content,originalDecision.content);assert.deepEqual(afterDecision.metadata,originalDecision.metadata);assert.equal(afterDecision.revision,originalDecision.revision,'Creating a task does not rewrite or complete the decision');
+  await page.locator('[data-todo-id="'+derivedTask[0].id+'"]').getByRole('button',{name:'Ver decisión de origen',exact:true}).click();await page.waitForFunction(id=>S.openNote?.id===id&&!S.openLoading,decisionDestination.id);await page.locator('.op-close').click();
+  await page.getByRole('button',{name:'Humano',exact:true}).click();await page.waitForFunction(()=>!S.human.loading&&S.view==='humano');
+  console.log('Decision to TODO passed: editable form, explicit save, original/project link, null unknowns and lost-response retry without duplication.');
   console.log('Meeting destinations passed: pending TODO, decision/project/source links, lost-response recovery, persistent approved catalog, filters/reload and no navigation writes.');
   // Questions are answered in a separate record, never silently approved as fields.
   await page.getByRole('button',{name:/^Fichas y aclaraciones ·/}).click();await page.waitForFunction(()=>S.human.kind==='person'&&!S.human.loading);

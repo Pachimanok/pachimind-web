@@ -5,7 +5,8 @@
     "test:people": "node scripts/test-people-browser.cjs",
     "test:meeting": "node scripts/test-meeting-proposals.cjs",
     "test:associations": "node scripts/test-associations-browser.cjs",
-    "test:human": "node scripts/test-human-browser.cjs"
+    "test:human": "node scripts/test-human-browser.cjs",
+    "test:todo-scroll": "node scripts/test-todo-scroll-browser.cjs"
   },
   "dependencies": {
     "@google/genai": "^2.8.0",

@@ -72,3 +72,19 @@ migrar ni modificar sus notas o recibos. Se mantienen los controles de permisos.
 
 Assets 20261111-human6, con API/gateway coordinados. Requiere reiniciar API/Node;
 MCP/OAuth intactos. No se ejecutan aprobaciones ni creaciones en producción al probar.
+
+## TODO: desplazamiento y actividad desde decisión
+
+TODO deja crecer su contenido dentro del scroll principal (sin recortarlo por
+flex/overflow:hidden). La barra superior conserva su altura y hay espacio para
+los controles finales sobre la navegación móvil. Prueba: npm run test:todo-scroll,
+con API/demo sintéticas; usa rueda y gestos táctiles con 35 tareas.
+
+Crear tarea desde esta decisión está disponible en recibos/lista de aprobadas.
+Abre un formulario editable en TODO, con proyecto y decisión vinculados. Guardar
+actividad crea una tarea pendiente; no mueve, reescribe ni completa la decisión.
+Responsable/fecha quedan vacíos. TODO ofrece Ver decisión de origen. Si falla la
+respuesta, reintentar el mismo formulario conserva el ID y no duplica la actividad.
+
+Assets 20261111-human7, API coordinada para origen/revisión/permisos. Sólo requiere
+reinicio de API; Node sirve los assets sin reiniciar, y MCP/OAuth quedan conservados.

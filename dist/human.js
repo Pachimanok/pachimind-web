@@ -130,6 +130,7 @@ function humanSavedPage(delta){const h=humanState();if(h.loading)return;h.savedP
 function humanDestinationLabel(d){return d.view==='todo'?'Ver en TODO':d.tipo==='decision'?'Ver decisión':'Ver registro';}
 function humanGoDestination(d,where='result'){
  if(!d)return;
+ if(where==='task'){humanTaskFromDecision(d);return;}
  if(where==='source'){openNote(d.source.id);return;}
  if(where==='project'){setView('memoria');selectMemory(d.project.id);return;}
  if(d.view==='todo'){
@@ -137,9 +138,18 @@ function humanGoDestination(d,where='result'){
   setView('todo');S.todoFocusId=d.id;render();
  }else openNote(d.id);
 }
+function humanTaskFromDecision(d){
+ if(S.todoBusy){humanState().error='Esperá a que termine el guardado de la actividad actual.';humanRender();return;}
+ if(d?.tipo!=='decision'||!d.revision){humanState().error='Actualizá la lista antes de crear una actividad desde esta decisión.';humanRender();return;}
+ setView('todo');newTodo();
+ Object.assign(S.todoForm,{title:d.title,project_id:d.project.id,source_decision_id:d.id,source_decision_revision:d.revision,source_decision_title:d.title,
+  area:['Laboral','Personal','Familia','Amigos','Apostolado'].includes(d.area)?d.area:'Laboral'});
+ render();document.getElementById('todo-form')?.scrollIntoView({block:'start'});
+}
+
 function humanOpenReceipt(index,where){humanGoDestination(humanState().receipts[index]?.destination,where);}
 function humanOpenSaved(index,where){humanGoDestination(humanState().savedData?.results[index],where);}
-function humanResultLinks(d,index,saved=false){const fn=saved?'humanOpenSaved':'humanOpenReceipt';return `<div class="human-result-links"><button type="button" class="btn btn-primary" onclick="${fn}(${index},'result')">${humanDestinationLabel(d)}</button><button type="button" class="btn btn-ghost" onclick="${fn}(${index},'project')">Ver proyecto</button><button type="button" class="btn btn-ghost" onclick="${fn}(${index},'source')">Ver reunión</button></div>`;}
+function humanResultLinks(d,index,saved=false){const fn=saved?'humanOpenSaved':'humanOpenReceipt';return `<div class="human-result-links"><button type="button" class="btn btn-primary" onclick="${fn}(${index},'result')">${humanDestinationLabel(d)}</button>${d.tipo==='decision'?`<button type="button" class="btn btn-primary" onclick="${fn}(${index},'task')">Crear tarea desde esta decisión</button>`:''}<button type="button" class="btn btn-ghost" onclick="${fn}(${index},'project')">Ver proyecto</button><button type="button" class="btn btn-ghost" onclick="${fn}(${index},'source')">Ver reunión</button></div>`;}
 function renderHumanReceipts(){return humanState().receipts.map((r,index)=>`<div role="status" class="human-receipt"><p>${r.state==='approved'?'Aprobado y verificado':r.state==='declined'?'Declinado y verificado':'Aclaración guardada y verificada'}: ${esc(r.title)}.</p>${r.destination?`<p class="human-muted">${r.destination.tipo==='accion'?(r.destination.view==='todo'?'Guardada en TODO como actividad. Estado actual: '+esc(r.destination.estado)+'.':'Actividad guardada.'):'Guardada como decisión del proyecto.'}</p>${humanResultLinks(r.destination,index)}`:''}</div>`).join('');}
 function renderHumanSaved(){
  const h=humanState(),data=h.savedData;

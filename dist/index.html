@@ -16,7 +16,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;0,9..144,700;1,9..144,400&family=DM+Sans:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/people.css">
   <link rel="stylesheet" href="/associations.css">
-  <link rel="stylesheet" href="/human.css?v=20261111-human6">
+  <link rel="stylesheet" href="/human.css?v=20261111-human7">
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     :root{
@@ -293,6 +293,11 @@
       .btn{min-height:40px}
       .btn-primary,.btn-ghost{padding:10px 16px}
     }
+/* TODO content must grow inside the existing page scroller, never be clipped by flex. */
+.main-content:has(.todo-view){flex:1 0 auto;overflow:visible}
+.main-area:has(.todo-view){scroll-padding-top:68px;scroll-padding-bottom:90px}
+.main-area:has(.todo-view)>.topbar{flex-shrink:0}
+.todo-view{padding-bottom:20px}
 .todo-view{line-height:1.5;overflow-wrap:anywhere}.todo-view input,.todo-view select,.todo-view textarea{background:var(--bg2);color:var(--tx);border:1px solid var(--bb);border-radius:8px;padding:9px 11px;font:inherit;min-height:40px}.todo-view input:focus-visible,.todo-view select:focus-visible,.todo-view textarea:focus-visible{outline:2px solid var(--ac);outline-offset:2px}.todo-view label{font-size:13px;color:var(--tx2)}.todo-view textarea{resize:vertical}.todo-view button:disabled{opacity:.5;cursor:wait}.todo-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}.todo-fields label{display:grid;gap:5px}.todo-fields input,.todo-fields select{width:100%}
     ::-webkit-scrollbar{width:4px}
     ::-webkit-scrollbar-track{background:transparent}
@@ -302,8 +307,8 @@
 <body>
 <div id="app" style="display:flex;width:100%;min-height:100vh"></div>
 <script src="/people.js"></script>
-<script src="/human.js?v=20261111-human6"></script>
-<script src="/relationship-review.js?v=20261111-human6"></script>
+<script src="/human.js?v=20261111-human7"></script>
+<script src="/relationship-review.js?v=20261111-human7"></script>
 <script src="/associations.js"></script>
 <script>
 // ══════════════════════════════════════════════════════════
@@ -2282,9 +2287,9 @@ async function saveTodo(){
   if(S.todoBusy||!document.getElementById('todo-form').reportValidity())return;
   const f=S.todoForm;S.todoBusy=true;S.todoError=null;render();
   try{
-    const payload=f.editing?{revision:f.revision,responsable:f.responsable||null,vencimiento:f.vencimiento||null,prioridad:f.prioridad}:{request_id:f.request_id,title:f.title,detalle:f.detalle,area:f.area,project_id:f.project_id||null,responsable:f.responsable||null,vencimiento:f.vencimiento||null,prioridad:f.prioridad};
-    await captureJSON('/actions/todo'+(f.editing?'/'+encodeURIComponent(f.id):''),{method:f.editing?'PATCH':'POST',body:JSON.stringify(payload)});
-    S.todoForm=null;await loadTodo();
+    const payload=f.editing?{revision:f.revision,responsable:f.responsable||null,vencimiento:f.vencimiento||null,prioridad:f.prioridad}:{request_id:f.request_id,title:f.title,detalle:f.detalle,area:f.area,project_id:f.project_id||null,responsable:f.responsable||null,vencimiento:f.vencimiento||null,prioridad:f.prioridad,...(f.source_decision_id?{source_decision_id:f.source_decision_id,source_decision_revision:f.source_decision_revision}:{})};
+    const saved=await captureJSON('/actions/todo'+(f.editing?'/'+encodeURIComponent(f.id):''),{method:f.editing?'PATCH':'POST',body:JSON.stringify(payload)});
+    S.todoFocusId=saved.id;S.todoForm=null;await loadTodo();
   }catch(e){S.todoError=e.message}
   S.todoBusy=false;render();
 }
@@ -2306,10 +2311,11 @@ function renderTodo(){
     ${S.todoError?`<p role="alert" style="color:var(--rd)">${esc(S.todoError)}</p>`:''}
     ${f?`<form id="todo-form" onsubmit="event.preventDefault();saveTodo()" style="border:1px solid var(--b);border-radius:12px;padding:20px;margin:16px 0;display:grid;gap:12px">
       <h3 style="margin:0">${f.editing?'Editar actividad':'Nueva actividad'}</h3>
+      ${f.source_decision_id?`<p class="todo-origin">Basada en la decisión: <strong>${esc(f.source_decision_title)}</strong>. La decisión original se conserva. ${f.editing?'Guardá los cambios de la actividad.':'Completá la actividad y pulsá Guardar actividad para crearla.'}</p>`:''}
       <label>Actividad<input aria-label="Actividad" required maxlength="200" ${f.editing?'readonly':''} value="${esc(f.title)}" oninput="S.todoForm.title=this.value" style="width:100%"></label>
       ${!f.editing?`<label>Detalle<textarea aria-label="Detalle" maxlength="20000" rows="3" oninput="S.todoForm.detalle=this.value" style="width:100%">${esc(f.detalle)}</textarea></label>
       <div class="todo-fields"><label>Área<select aria-label="Área" onchange="S.todoForm.area=this.value">${['Laboral','Personal','Familia','Amigos','Apostolado'].map(a=>`<option ${f.area===a?'selected':''}>${a}</option>`).join('')}</select></label>
-      <label>Proyecto (opcional)<select aria-label="Proyecto" onchange="S.todoForm.project_id=this.value"><option value="">Sin proyecto</option>${S.todoProjects.map(p=>`<option value="${esc(p.id)}" ${f.project_id===p.id?'selected':''}>${esc(p.title)}</option>`).join('')}</select></label></div>`:''}
+      <label>Proyecto (opcional)<select aria-label="Proyecto" ${f.source_decision_id?'disabled':''} onchange="S.todoForm.project_id=this.value"><option value="">Sin proyecto</option>${S.todoProjects.map(p=>`<option value="${esc(p.id)}" ${f.project_id===p.id?'selected':''}>${esc(p.title)}</option>`).join('')}</select></label></div>`:''}
       <div class="todo-fields"><label>Responsable<input aria-label="Responsable" maxlength="200" value="${esc(f.responsable)}" placeholder="Sin asignar" oninput="S.todoForm.responsable=this.value"></label>
       <label>Vencimiento<input aria-label="Vencimiento" type="date" value="${esc(f.vencimiento)}" oninput="S.todoForm.vencimiento=this.value"></label>
       <label>Prioridad<select aria-label="Prioridad" onchange="S.todoForm.prioridad=this.value">${['alta','media','baja'].map(p=>`<option ${f.prioridad===p?'selected':''}>${p}</option>`).join('')}</select></label></div>
@@ -2324,8 +2330,8 @@ function renderTodo(){
       <button class="btn btn-ghost" aria-label="${t.estado==='completado'?'Reabrir':'Completar'} ${esc(t.title)}" onclick="todoState(${t.index},'${t.estado==='completado'?'pendiente':'completado'}')" ${disabled}>${t.estado==='completado'?'✓':'○'}</button>
       <div style="flex:1;min-width:180px"><strong style="${t.estado==='completado'?'text-decoration:line-through;opacity:.65':''}">${esc(t.title)}</strong><p style="font-size:12px;color:var(--tx2);margin:7px 0">${esc(t.area||'Sin área')} · ${esc(t.responsable||'Sin asignar')} · Prioridad ${esc(t.prioridad)}</p>
       ${t.proyectos.length?`<p style="font-size:12px;margin:5px 0">${t.proyectos.map(p=>esc(p.replace(/\[\[|\]\]/g,''))).join(' · ')}</p>`:''}
-      <p style="font-size:12px;margin:5px 0;${t.estado!=='completado'&&t.vencimiento&&t.vencimiento<today?'color:var(--rd)':''}">${t.vencimiento?`${t.estado!=='completado'&&t.vencimiento<today?'Vencida · ':''}${esc(t.vencimiento)}`:'Sin vencimiento'}${t.fuente_ref?' · De una reunión':''}</p></div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap"><select aria-label="Estado de ${esc(t.title)}" ${disabled} onchange="todoState(${t.index},this.value)">${[['pendiente','Pendiente'],['en_proceso','En curso'],['completado','Hecha']].map(([v,l])=>`<option value="${v}" ${t.estado===v?'selected':''}>${l}</option>`).join('')}</select><button class="btn btn-ghost" ${disabled} onclick="editTodo(${t.index})">Editar</button><button class="btn btn-ghost" onclick="openNote('${esc(t.id)}')">Ver nota</button></div>
+      <p style="font-size:12px;margin:5px 0;${t.estado!=='completado'&&t.vencimiento&&t.vencimiento<today?'color:var(--rd)':''}">${t.vencimiento?`${t.estado!=='completado'&&t.vencimiento<today?'Vencida · ':''}${esc(t.vencimiento)}`:'Sin vencimiento'}${t.source_decision_id?' · De una decisión':t.fuente_ref?' · De una reunión':''}</p></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap"><select aria-label="Estado de ${esc(t.title)}" ${disabled} onchange="todoState(${t.index},this.value)">${[['pendiente','Pendiente'],['en_proceso','En curso'],['completado','Hecha']].map(([v,l])=>`<option value="${v}" ${t.estado===v?'selected':''}>${l}</option>`).join('')}</select><button class="btn btn-ghost" ${disabled} onclick="editTodo(${t.index})">Editar</button><button class="btn btn-ghost" onclick="openNote('${esc(t.id)}')">Ver nota</button>${t.source_decision_id?`<button class="btn btn-ghost" onclick="openNote('${esc(t.source_decision_id)}')">Ver decisión de origen</button>`:''}</div>
     </article>`).join(''):'<p style="padding:32px;border:1px dashed var(--b);border-radius:12px;color:var(--tx2)">No hay actividades en esta vista. Agregá una o aprobá una acción desde Memoria.</p>'}
   </section>`;
 }
