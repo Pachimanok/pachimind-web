@@ -64,6 +64,7 @@ const out=process.env.HUMAN_SCREENSHOT_DIR||path.join(process.cwd(),'artifacts',
   assert.equal(await page.getByRole('button',{name:'Aplicar vínculos',exact:true}).isDisabled(),true);
   assert.equal(await page.evaluate(key=>S.human.data.results.some(i=>i.key===key),beforeRefresh.key),false,'Replaced proposal leaves only the fresh pending version');
   await page.getByRole('button',{name:'Declinar',exact:true}).click();await page.getByText('Declinado y verificado: '+remaining.title+'.',{exact:true}).waitFor();
+  assert.equal(await page.evaluate(()=>S.human.navigationNotice),null,'Decision receipts clear outdated navigation/pending notices');
   await page.getByRole('button',{name:'Humano',exact:true}).click();await page.getByRole('heading',{name:'Humano',exact:true}).waitFor();
   await page.waitForFunction(()=>S.human.data&&S.human.kind==='all'&&!S.human.loading);
   assert.ok(await page.locator('#human-nav-count').innerText());

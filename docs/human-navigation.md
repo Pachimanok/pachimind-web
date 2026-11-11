@@ -39,5 +39,5 @@ Una evidencia que ya no es literal o un destino incompatible impiden actualizar.
 Decisiones pendientes muestra vínculos, fichas y propuestas. Revisión opcional
 agrupa las notas sin revisar sólo al elegirla; no incrementa el badge principal,
 no se impone como paso previo ni cambia estados o permisos automáticamente.
-Assets 20261111-human3. Requiere publicar también API y server.cjs y reiniciar
+Assets 20261111-human4. Requiere publicar también API y server.cjs y reiniciar
 API/Node por la ruta de actualización; MCP/OAuth permanecen conservados.

@@ -53,7 +53,7 @@ function humanAnswer(value){const h=humanState();h.answer=value;const button=doc
 function humanFieldValue(key,value){return typeof personalFieldText==='function'?personalFieldText(key,value):typeof value==='object'?JSON.stringify(value):String(value??'Sin dato');}
 function humanReceipt(data,title){
  const h=humanState();if(!data.verified||!['approved','declined','answered'].includes(data.state))throw new Error('El resultado todavía no está confirmado.');
- h.receipts.push({id:data.id,kind:data.kind,state:data.state,title});h.receipts=h.receipts.slice(-5);h.detail=null;h.detailKey=null;h.uncertain=null;h.authorized=false;
+ h.navigationNotice=null;h.receipts.push({id:data.id,kind:data.kind,state:data.state,title});h.receipts=h.receipts.slice(-5);h.detail=null;h.detailKey=null;h.uncertain=null;h.authorized=false;
 }
 async function humanSend(payload,key,title){
  const h=humanState();h.busy=true;h.error=null;humanRender();
