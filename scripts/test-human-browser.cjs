@@ -74,6 +74,21 @@ const out=process.env.HUMAN_SCREENSHOT_DIR||path.join(process.cwd(),'artifacts',
   console.log('Links passed.');
   // Meeting action approvals are explicit and land in TODO, decisions can be declined.
   await page.getByRole('button',{name:/^Acciones y decisiones ·/}).click();await page.waitForFunction(()=>S.human.kind==='meeting'&&!S.human.loading);
+  const pendingDecision=await page.evaluate(()=>S.human.data.results.find(i=>i.title==='Decisión a aprobar (demo)'));
+  const decisionCard=page.locator('.human-card').filter({has:page.getByRole('heading',{name:pendingDecision.title,exact:true})});
+  await decisionCard.getByRole('region',{name:'Contexto de origen'}).getByText('Fecha de la reunión:').waitFor();
+  assert.equal(await decisionCard.locator('.human-context').getByText('10/11/2026',{exact:false}).count(),1);
+  const beforeContextWrites=writes.length;
+  await decisionCard.locator('.human-context').getByRole('button',{name:pendingDecision.context.source.title,exact:true}).click();
+  await page.waitForFunction(id=>S.openNote?.id===id&&!S.openLoading,pendingDecision.context.source.id);await page.locator('.op-close').click();
+  await decisionCard.getByRole('button',{name:'Revisar',exact:true}).click();await page.waitForFunction(()=>S.human.detail&&!S.human.detailBusy);
+  await page.locator('#human-detail').getByRole('heading',{name:'Evidencia literal de la reunión',exact:true}).waitFor();
+  assert.equal(await page.locator('#human-detail .human-context').getByRole('button',{name:pendingDecision.context.project.title,exact:true}).count(),1);
+  assert.equal(await page.getByLabel('Confirmo esta propuesta y su efecto',{exact:true}).isChecked(),false);
+  assert.equal(await page.getByRole('button',{name:'Aprobar',exact:true}).isDisabled(),true);
+  assert.equal(writes.length,beforeContextWrites,'Reading provenance does not approve or change a proposal');
+  await page.screenshot({path:path.join(out,'decision-contexto-escritorio.png'),fullPage:true});
+  await page.getByRole('button',{name:'Cerrar detalle',exact:true}).click();
   await page.locator('.human-card').filter({has:page.getByRole('heading',{name:'Informe a aprobar (demo)',exact:true})}).getByRole('button',{name:'Revisar',exact:true}).click();
   await page.getByLabel('Confirmo esta propuesta y su efecto',{exact:true}).check();await page.getByRole('button',{name:'Aprobar',exact:true}).click();
   await page.getByText('Aprobado y verificado: Informe a aprobar (demo).',{exact:true}).waitFor();

@@ -115,3 +115,22 @@ y ocultar el problema. Capturas fuera del repositorio: `LIST_SCREENSHOT_DIR`.
 Publicación: únicamente `dist/human.js` y `dist/index.html`, con respaldo/hash
 previo y verificación HTTPS. No requiere reiniciar servicios. Rollback restaura
 sólo esos dos assets; no restaurar el vault ni cambiar permisos OAuth.
+
+## Contexto de las propuestas y decisiones
+
+En Humano, las propuestas de acciones y decisiones muestran **De dónde viene**:
+proyecto, reunión de origen y fecha registrada de esa reunión. Los títulos abren
+las notas originales; el detalle identifica por separado la propuesta y su cita
+literal. El mismo bloque aparece en recibos y resultados aprobados. La búsqueda
+de pendientes/aprobadas también acepta el nombre del proyecto o la reunión.
+
+Si no existe una fecha válida, se muestra Sin fecha confirmada. No se deduce del
+nombre del archivo, del día de importación o de la aprobación. Los metadatos se
+obtienen de las referencias explícitas que ya tenía la propuesta, respetando su
+visibilidad. Consultar contexto no autoriza ni aprueba nada y no reescribe notas.
+El catálogo incluye sólo procedencia; el contenido/evidencia se abre en el detalle.
+
+Assets `20261111-decision-context`. `npm run test:decision-context` comprueba
+escritorio/móvil, enlaces de origen, evidencia literal, fecha ausente y ausencia
+de escrituras. `test:human` conserva el flujo de aprobación y `test:list-scroll`
+incluye una lista larga de decisiones con contexto.

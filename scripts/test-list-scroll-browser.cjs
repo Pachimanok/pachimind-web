@@ -10,7 +10,7 @@ async function seed(page,kind){await page.evaluate(kind=>{
  S.searchQ='';S.searchResults=null;S.openNote=null;S.openLoading=false;S.human=newHumanState();S.people=newPeopleState();S.associations=newAssociationState();
  S.view=kind.startsWith('humano')?'humano':kind==='reuniones-fuentes'?'reuniones':kind.startsWith('busqueda-')?kind.slice(9):kind;
  if(kind==='tablero'){S.boards={nota:notes};S.boardsLoading=false;S.areaFilter='todos';S.boardExpanded={nota:true};}
- if(['humano','vinculos','humano-opcionales'].includes(kind)){S.human.data={...paged(pending),counts:{links:42},total_pending:42};if(kind==='humano-opcionales'){S.human.kind='note';S.human.data.optional={selection_count:42,hidden_count:0};}}
+ if(['humano','humano-contexto','vinculos','humano-opcionales'].includes(kind)){S.human.data={...paged(pending),counts:{links:42},total_pending:42};if(kind==='humano-contexto')S.human.data.results=pending.map(n=>({...n,kind:'meeting',context:{project:{id:'demo-project',title:'Proyecto demo',path:'Demo/proyecto.md'},source:{id:'demo-meeting',title:'Reunión demo — contexto de la decisión',path:'Demo/reunion.md'},meeting_date:'2026-11-10',proposal_type:'decision'}}));if(kind==='humano-opcionales'){S.human.kind='note';S.human.data.optional={selection_count:42,hidden_count:0};}}
  if(kind==='humano-aprobadas'){S.human.showSaved=true;S.human.savedData=paged(notes.map(n=>({...n,tipo:'decision',project:{id:'demo',title:'Proyecto demo'},source:{id:'demo',title:'Reunión demo'}})));}
  if(kind==='memoria'){S.memoryProjects=[];S.memoryLoading=false;S.memoryError=null;S.memoryId='demo';S.memoryData={project_id:'demo',title:'Proyecto demo',warnings:[],sources:notes};S.capOpen=false;}
  if(kind==='todo'){S.todoItems=notes.map(n=>({...n,proyectos:[],responsable:null,vencimiento:null,prioridad:'media',revision:'f'.repeat(64)}));S.todoLoading=false;S.todoFilter='todas';S.todoArea='todas';S.todoQuery='';S.todoForm=null;}
@@ -52,7 +52,7 @@ async function accessibleLast(page,locator,height,mobile){
   page.on('request',r=>{if(!['GET','HEAD'].includes(r.method())&&!r.url().endsWith('/api/auth'))writes.push(r.url())});page.on('pageerror',e=>errors.push(e.message));
   await page.goto(origin+'/?view=humano');await page.locator('#pwd').fill('preview-password');await page.getByRole('button',{name:'Entrar',exact:true}).click();await page.waitForFunction(()=>S.human.data&&!S.human.loading);await page.waitForTimeout(500);
   assert.equal(await page.evaluate(async()=>(await(await api('/health/preview')).json()).synthetic),true);
-  for(const kind of ['humano','humano-aprobadas','humano-opcionales','vinculos','tablero','memoria','todo','personas','entidades','inbox','reuniones','reuniones-fuentes','vault','sistema','busqueda-tags','busqueda-chat']){
+  for(const kind of ['humano','humano-contexto','humano-aprobadas','humano-opcionales','vinculos','tablero','memoria','todo','personas','entidades','inbox','reuniones','reuniones-fuentes','vault','sistema','busqueda-tags','busqueda-chat']){
    await seed(page,kind);const top=await gesture(page,context,'.main-area',mobile);
    const last=kind==='sistema'?page.getByText('Categoría demo 159',{exact:true}):page.locator('.main-content').getByText('Elemento demo 41',{exact:true});
    await accessibleLast(page,last,viewport.height,mobile);
