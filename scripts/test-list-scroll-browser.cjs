@@ -50,7 +50,7 @@ async function accessibleLast(page,locator,height,mobile){
  for(const viewport of [{width:1440,height:900},{width:390,height:844}]){
   const mobile=viewport.width<700,context=await browser.newContext({viewport,hasTouch:mobile,isMobile:mobile}),page=await context.newPage(),writes=[],errors=[];
   page.on('request',r=>{if(!['GET','HEAD'].includes(r.method())&&!r.url().endsWith('/api/auth'))writes.push(r.url())});page.on('pageerror',e=>errors.push(e.message));
-  await page.goto(origin+'/?view=humano');await page.locator('#pwd').fill('preview-password');await page.getByRole('button',{name:'Entrar',exact:true}).click();await page.waitForFunction(()=>S.human.data&&!S.human.loading);await page.waitForTimeout(500);
+  await page.goto(origin+'/?view=humano');await page.locator('#pwd').fill('preview-password');await page.getByRole('button',{name:'Entrar',exact:true}).click();await page.waitForFunction(()=>S.human?.data&&!S.human.loading);await page.waitForTimeout(500);
   assert.equal(await page.evaluate(async()=>(await(await api('/health/preview')).json()).synthetic),true);
   for(const kind of ['humano','humano-contexto','humano-aprobadas','humano-opcionales','vinculos','tablero','memoria','todo','personas','entidades','inbox','reuniones','reuniones-fuentes','vault','sistema','busqueda-tags','busqueda-chat']){
    await seed(page,kind);const top=await gesture(page,context,'.main-area',mobile);

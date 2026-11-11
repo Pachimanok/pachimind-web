@@ -16,7 +16,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;0,9..144,700;1,9..144,400&family=DM+Sans:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/people.css">
   <link rel="stylesheet" href="/associations.css">
-  <link rel="stylesheet" href="/human.css?v=20261111-decision-context">
+  <link rel="stylesheet" href="/human.css?v=20261111-todo-assignments">
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     :root{
@@ -311,8 +311,8 @@
 <body>
 <div id="app" style="display:flex;width:100%;min-height:100vh"></div>
 <script src="/people.js"></script>
-<script src="/human.js?v=20261111-decision-context"></script>
-<script src="/relationship-review.js?v=20261111-decision-context"></script>
+<script src="/human.js?v=20261111-todo-assignments"></script>
+<script src="/relationship-review.js?v=20261111-todo-assignments"></script>
 <script src="/associations.js"></script>
 <script>
 // ══════════════════════════════════════════════════════════
@@ -2297,13 +2297,16 @@ async function loadTodo(){
   render();
   if(S.view==='todo'&&S.todoFocusId){const target=Array.from(document.querySelectorAll('[data-todo-id]')).find(el=>el.dataset.todoId===S.todoFocusId);target?.scrollIntoView({block:'center'});target?.focus({preventScroll:true});}
 }
-function newTodo(){if(S.todoBusy)return;S.todoForm={request_id:crypto.randomUUID(),title:'',detalle:'',area:'Laboral',project_id:'',responsable:'',vencimiento:'',prioridad:'media'};S.todoError=null;render()}
-function editTodo(i){if(S.todoBusy)return;const t=S.todoItems[i];S.todoForm={...t,responsable:t.responsable||'',vencimiento:t.vencimiento||'',editing:true};render()}
+function newTodo(){if(S.todoBusy)return;S.todoForm={request_id:crypto.randomUUID(),title:'',detalle:'',area:'Laboral',project_id:'',responsable:'',subresponsables_text:'',fecha_inicio:'',vencimiento:'',prioridad:'media'};S.todoError=null;render();document.getElementById('todo-form')?.scrollIntoView({block:'start'})}
+function editTodo(i){if(S.todoBusy)return;const t=S.todoItems[i];S.todoForm={...t,responsable:t.responsable||'',subresponsables_text:(t.subresponsables||[]).join('\n'),fecha_inicio:t.fecha_inicio||'',vencimiento:t.vencimiento||'',editing:true};render();document.getElementById('todo-form')?.scrollIntoView({block:'start'})}
 async function saveTodo(){
   if(S.todoBusy||!document.getElementById('todo-form').reportValidity())return;
-  const f=S.todoForm;S.todoBusy=true;S.todoError=null;render();
+  const f=S.todoForm,subresponsables=(f.subresponsables_text||'').split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+  if(subresponsables.length>20||subresponsables.some(s=>s.length>200)){S.todoError='Indicá hasta 20 subresponsables, con un nombre de hasta 200 caracteres por línea.';render();return;}
+  const assignments={responsable:f.responsable.trim()||null,subresponsables,fecha_inicio:f.fecha_inicio||null,vencimiento:f.vencimiento||null,prioridad:f.prioridad};
+  S.todoBusy=true;S.todoError=null;render();
   try{
-    const payload=f.editing?{revision:f.revision,responsable:f.responsable||null,vencimiento:f.vencimiento||null,prioridad:f.prioridad}:{request_id:f.request_id,title:f.title,detalle:f.detalle,area:f.area,project_id:f.project_id||null,responsable:f.responsable||null,vencimiento:f.vencimiento||null,prioridad:f.prioridad,...(f.source_decision_id?{source_decision_id:f.source_decision_id,source_decision_revision:f.source_decision_revision}:{})};
+    const payload=f.editing?{revision:f.revision,...assignments}:{request_id:f.request_id,title:f.title,detalle:f.detalle,area:f.area,project_id:f.project_id||null,...assignments,...(f.source_decision_id?{source_decision_id:f.source_decision_id,source_decision_revision:f.source_decision_revision}:{})};
     const saved=await captureJSON('/actions/todo'+(f.editing?'/'+encodeURIComponent(f.id):''),{method:f.editing?'PATCH':'POST',body:JSON.stringify(payload)});
     S.todoFocusId=saved.id;S.todoForm=null;await loadTodo();
   }catch(e){S.todoError=e.message}
@@ -2319,7 +2322,7 @@ function todoFilter(value){S.todoFilter=value;render()}
 function todoDate(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
 function renderTodo(){
   const today=todoDate(),done=S.todoItems.filter(t=>t.estado==='completado').length,overdue=S.todoItems.filter(t=>t.estado!=='completado'&&t.vencimiento&&t.vencimiento<today).length;
-  const items=S.todoItems.map((t,i)=>({...t,index:i})).filter(t=>(S.todoFilter==='todas'||(S.todoFilter==='hechas'?t.estado==='completado':S.todoFilter==='vencidas'?t.estado!=='completado'&&t.vencimiento&&t.vencimiento<today:t.estado!=='completado'))&&(S.todoArea==='todas'||t.area===S.todoArea)&&(!S.todoQuery||[t.title,t.responsable,...t.proyectos].join(' ').toLowerCase().includes(S.todoQuery.toLowerCase())));
+  const items=S.todoItems.map((t,i)=>({...t,index:i})).filter(t=>(S.todoFilter==='todas'||(S.todoFilter==='hechas'?t.estado==='completado':S.todoFilter==='vencidas'?t.estado!=='completado'&&t.vencimiento&&t.vencimiento<today:t.estado!=='completado'))&&(S.todoArea==='todas'||t.area===S.todoArea)&&(!S.todoQuery||[t.title,t.responsable,...(t.subresponsables||[]),...t.proyectos].join(' ').toLowerCase().includes(S.todoQuery.toLowerCase())));
   const f=S.todoForm,disabled=S.todoBusy?'disabled':'';
   return `<section class="todo-view" style="max-width:1100px;margin:auto;width:100%">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><div><h2 style="margin:0">TODO · Actividades</h2><p style="color:var(--tx2)">${S.todoItems.length-done} abiertas · ${overdue} vencidas · ${done} hechas</p></div><div style="display:flex;gap:8px"><button class="btn btn-ghost" onclick="loadTodo()" ${disabled}>Actualizar</button><button class="btn btn-primary" onclick="newTodo()" ${disabled}>+ Actividad</button></div></div>
@@ -2332,9 +2335,11 @@ function renderTodo(){
       ${!f.editing?`<label>Detalle<textarea aria-label="Detalle" maxlength="20000" rows="3" oninput="S.todoForm.detalle=this.value" style="width:100%">${esc(f.detalle)}</textarea></label>
       <div class="todo-fields"><label>Área<select aria-label="Área" onchange="S.todoForm.area=this.value">${['Laboral','Personal','Familia','Amigos','Apostolado'].map(a=>`<option ${f.area===a?'selected':''}>${a}</option>`).join('')}</select></label>
       <label>Proyecto (opcional)<select aria-label="Proyecto" ${f.source_decision_id?'disabled':''} onchange="S.todoForm.project_id=this.value"><option value="">Sin proyecto</option>${S.todoProjects.map(p=>`<option value="${esc(p.id)}" ${f.project_id===p.id?'selected':''}>${esc(p.title)}</option>`).join('')}</select></label></div>`:''}
-      <div class="todo-fields"><label>Responsable<input aria-label="Responsable" maxlength="200" value="${esc(f.responsable)}" placeholder="Sin asignar" oninput="S.todoForm.responsable=this.value"></label>
-      <label>Vencimiento<input aria-label="Vencimiento" type="date" value="${esc(f.vencimiento)}" oninput="S.todoForm.vencimiento=this.value"></label>
+      <div class="todo-fields"><label>Responsable principal<input aria-label="Responsable" maxlength="200" value="${esc(f.responsable)}" placeholder="Sin asignar" oninput="S.todoForm.responsable=this.value"></label>
+      <label>Fecha de inicio<input id="todo-start" aria-label="Fecha de inicio" type="date" max="${esc(f.vencimiento)}" value="${esc(f.fecha_inicio)}" oninput="S.todoForm.fecha_inicio=this.value;document.getElementById('todo-due').min=this.value"></label>
+      <label>Vencimiento<input id="todo-due" aria-label="Vencimiento" type="date" min="${esc(f.fecha_inicio)}" value="${esc(f.vencimiento)}" oninput="S.todoForm.vencimiento=this.value;document.getElementById('todo-start').max=this.value"></label>
       <label>Prioridad<select aria-label="Prioridad" onchange="S.todoForm.prioridad=this.value">${['alta','media','baja'].map(p=>`<option ${f.prioridad===p?'selected':''}>${p}</option>`).join('')}</select></label></div>
+      <label>Subresponsables (opcionales)<textarea aria-label="Subresponsables" maxlength="4200" rows="3" placeholder="Un nombre por línea" oninput="S.todoForm.subresponsables_text=this.value" style="width:100%">${esc(f.subresponsables_text||'')}</textarea><small style="display:block;color:var(--tx2)">Hasta 20 nombres, uno por línea. Responsable y fechas pueden quedar sin asignar.</small></label>
       <div><button class="btn btn-primary" type="submit" ${disabled}>${S.todoBusy?'Guardando…':'Guardar actividad'}</button> <button class="btn btn-ghost" type="button" ${disabled} onclick="S.todoForm=null;render()">Cancelar</button></div>
     </form>`:''}
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin:20px 0">
@@ -2344,9 +2349,10 @@ function renderTodo(){
     </div>
     ${S.todoLoading?'<p role="status">Cargando actividades…</p>':items.length?items.map(t=>`<article data-todo-id="${esc(t.id)}" tabindex="-1" class="${S.todoFocusId===t.id?'todo-focused':''}" style="border:1px solid var(--b);border-radius:10px;padding:16px;margin:10px 0;display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap">
       <button class="btn btn-ghost" aria-label="${t.estado==='completado'?'Reabrir':'Completar'} ${esc(t.title)}" onclick="todoState(${t.index},'${t.estado==='completado'?'pendiente':'completado'}')" ${disabled}>${t.estado==='completado'?'✓':'○'}</button>
-      <div style="flex:1;min-width:180px"><strong style="${t.estado==='completado'?'text-decoration:line-through;opacity:.65':''}">${esc(t.title)}</strong><p style="font-size:12px;color:var(--tx2);margin:7px 0">${esc(t.area||'Sin área')} · ${esc(t.responsable||'Sin asignar')} · Prioridad ${esc(t.prioridad)}</p>
+      <div style="flex:1;min-width:180px"><strong style="${t.estado==='completado'?'text-decoration:line-through;opacity:.65':''}">${esc(t.title)}</strong><p style="font-size:12px;color:var(--tx2);margin:7px 0">${esc(t.area||'Sin área')} · Responsable: ${esc(t.responsable||'Sin asignar')} · Prioridad ${esc(t.prioridad)}</p>
+      ${t.subresponsables?.length?`<p style="font-size:12px;color:var(--tx2);margin:5px 0">Subresponsables: ${t.subresponsables.map(s=>esc(s)).join(' · ')}</p>`:''}
       ${t.proyectos.length?`<p style="font-size:12px;margin:5px 0">${t.proyectos.map(p=>esc(p.replace(/\[\[|\]\]/g,''))).join(' · ')}</p>`:''}
-      <p style="font-size:12px;margin:5px 0;${t.estado!=='completado'&&t.vencimiento&&t.vencimiento<today?'color:var(--rd)':''}">${t.vencimiento?`${t.estado!=='completado'&&t.vencimiento<today?'Vencida · ':''}${esc(t.vencimiento)}`:'Sin vencimiento'}${t.source_decision_id?' · De una decisión':t.fuente_ref?' · De una reunión':''}</p></div>
+      <p style="font-size:12px;margin:5px 0;${t.estado!=='completado'&&t.vencimiento&&t.vencimiento<today?'color:var(--rd)':''}">${t.fecha_inicio?'Inicio: '+esc(t.fecha_inicio)+' · ':''}${t.vencimiento?`Vencimiento: ${t.estado!=='completado'&&t.vencimiento<today?'Vencida · ':''}${esc(t.vencimiento)}`:'Sin vencimiento'}${t.source_decision_id?' · De una decisión':t.fuente_ref?' · De una reunión':''}</p></div>
       <div style="display:flex;gap:6px;flex-wrap:wrap"><select aria-label="Estado de ${esc(t.title)}" ${disabled} onchange="todoState(${t.index},this.value)">${[['pendiente','Pendiente'],['en_proceso','En curso'],['completado','Hecha']].map(([v,l])=>`<option value="${v}" ${t.estado===v?'selected':''}>${l}</option>`).join('')}</select><button class="btn btn-ghost" ${disabled} onclick="editTodo(${t.index})">Editar</button><button class="btn btn-ghost" onclick="openNote('${esc(t.id)}')">Ver nota</button>${t.source_decision_id?`<button class="btn btn-ghost" onclick="openNote('${esc(t.source_decision_id)}')">Ver decisión de origen</button>`:''}</div>
     </article>`).join(''):'<p style="padding:32px;border:1px dashed var(--b);border-radius:12px;color:var(--tx2)">No hay actividades en esta vista. Agregá una o aprobá una acción desde Memoria.</p>'}
   </section>`;

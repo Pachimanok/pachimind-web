@@ -8,7 +8,8 @@
     "test:human": "node scripts/test-human-browser.cjs",
     "test:todo-scroll": "node scripts/test-todo-scroll-browser.cjs",
     "test:list-scroll": "node scripts/test-list-scroll-browser.cjs",
-    "test:decision-context": "node scripts/test-decision-context-browser.cjs"
+    "test:decision-context": "node scripts/test-decision-context-browser.cjs",
+    "test:todo-assignments": "node scripts/test-todo-assignments-browser.cjs"
   },
   "dependencies": {
     "@google/genai": "^2.8.0",

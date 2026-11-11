@@ -134,3 +134,20 @@ Assets `20261111-decision-context`. `npm run test:decision-context` comprueba
 escritorio/móvil, enlaces de origen, evidencia literal, fecha ausente y ausencia
 de escrituras. `test:human` conserva el flujo de aprobación y `test:list-scroll`
 incluye una lista larga de decisiones con contexto.
+
+## Responsables y fechas en TODO
+
+En TODO, + Actividad o Editar permiten indicar un responsable principal, varios
+subresponsables (hasta 20, uno por línea), fecha de inicio y vencimiento. Todos son
+opcionales y se pueden borrar. La lista muestra los nombres y las dos fechas;
+la búsqueda incluye subresponsables. Editar desplaza el formulario a la vista.
+No asigna personas ni fechas automáticamente al partir de una decisión.
+
+El vencimiento no puede ser anterior al inicio. Al completar/reabrir se mantienen
+las asignaciones y fechas planificadas. El texto, proyecto y referencia de origen
+se conservan. Los datos nuevos se guardan en la actividad, sin modificar la reunión
+o decisión. Assets 20261111-todo-assignments; requiere API y frontend coordinados.
+
+`npm run test:todo-assignments` prueba crear, editar, recargar, borrar, búsqueda,
+validación de fechas y reintento de respuesta perdida en escritorio/móvil, sólo
+contra la demo sintética. Se mantiene la auditoría de scroll y el flujo Humano.
