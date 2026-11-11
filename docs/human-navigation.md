@@ -26,3 +26,18 @@ Publicación: sólo dist/index.html, dist/human.js y dist/human.css; versión de
 reiniciar servicios. Antes de reemplazar, verificar hashes y respaldar esos tres
 archivos. Para rollback restaurar sólo esos destinos si conservan los hashes de
 esta entrega. No restaurar el vault ni deshacer decisiones del usuario.
+
+## Actualizar sin aplicar
+
+La vista de conflicto ahora permite Actualizar propuesta, sin aplicar. Prepara
+los mismos vínculos con revisiones actuales y reemplaza el pendiente anterior,
+conservándolo para trazabilidad. La lectura/comprobación no escribe. La propuesta
+nueva exige una autorización y aprobación separadas; no arrastra la casilla previa.
+La respuesta perdida reintenta el mismo ID de creación para evitar duplicaciones.
+Una evidencia que ya no es literal o un destino incompatible impiden actualizar.
+
+Decisiones pendientes muestra vínculos, fichas y propuestas. Revisión opcional
+agrupa las notas sin revisar sólo al elegirla; no incrementa el badge principal,
+no se impone como paso previo ni cambia estados o permisos automáticamente.
+Assets 20261111-human3. Requiere publicar también API y server.cjs y reiniciar
+API/Node por la ruta de actualización; MCP/OAuth permanecen conservados.

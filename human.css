@@ -2,3 +2,5 @@
 .human-card>.btn{flex-shrink:0;white-space:nowrap}
 
 .human-navigation{display:flex;flex-wrap:wrap;gap:10px;align-items:center;border-top:1px solid var(--b);padding-top:18px;margin-top:20px}.human-navigation small{flex-basis:100%;color:var(--tx2);font-size:12px}.human-navigation-notice,.human-conflict-help{font-size:13px;line-height:1.6;color:var(--tx2);padding:12px;background:var(--bg);border:1px solid var(--b);border-radius:8px}.human-conflict-help{border-color:var(--ac)}@media(max-width:700px){.human-navigation .btn{width:100%}}
+
+.human-refresh,.human-optional{padding:14px;border:1px solid var(--b);border-radius:8px;background:var(--bg);font-size:13px;line-height:1.6;margin:14px 0}.human-refresh p{margin:0 0 12px}.human-refresh .btn{white-space:normal}

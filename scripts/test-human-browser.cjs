@@ -49,10 +49,26 @@ const out=process.env.HUMAN_SCREENSHOT_DIR||path.join(process.cwd(),'artifacts',
   assert.equal(await page.locator('#human-detail').count(),0);
   await page.locator('.human-card button[data-key="'+remaining.key+'"]').click();
   await page.waitForFunction(()=>!!S.human.detail&&!S.human.detailBusy);
+  // Refresh replaces only the stale proposal. Lose its response: same ID must recover one draft.
+  const beforeRefresh=await page.evaluate(()=>S.human.detail);let refreshAttempts=[];
+  await page.route('**/api/human/items/links/*/refresh',async route=>{refreshAttempts.push(route.request().postDataJSON());await route.fetch();await route.abort('failed');},{times:1});
+  page.on('request',r=>{if(r.url().endsWith('/refresh')&&r.method()==='POST'&&refreshAttempts.length)refreshAttempts.push(r.postDataJSON())});
+  const decisionsBeforeRefresh=writes.filter(url=>url.endsWith('/decision')).length;
+  await page.getByRole('button',{name:'Actualizar propuesta, sin aplicar',exact:true}).click();
+  await page.waitForFunction(key=>!S.human.busy&&S.human.detail?.key!==key&&!!S.human.detail?.validation.ok,beforeRefresh.key);
+  const updated=await page.evaluate(()=>S.human.detail);assert.equal(updated.kind,'links');
+  assert.deepEqual(updated.links.map(l=>[l.target_id,l.relation,l.action]),beforeRefresh.links.map(l=>[l.target_id,l.relation,l.action]));
+  assert.ok(refreshAttempts.length>=2);assert.equal(new Set(refreshAttempts.map(p=>p.request_id)).size,1,'Lost refresh response reuses the same draft ID');
+  assert.equal(writes.filter(url=>url.endsWith('/decision')).length,decisionsBeforeRefresh,'Updating a proposal never applies or rejects it');
+  assert.equal(await page.getByLabel('Autorizar únicamente estos vínculos',{exact:true}).isChecked(),false);
+  assert.equal(await page.getByRole('button',{name:'Aplicar vínculos',exact:true}).isDisabled(),true);
+  assert.equal(await page.evaluate(key=>S.human.data.results.some(i=>i.key===key),beforeRefresh.key),false,'Replaced proposal leaves only the fresh pending version');
   await page.getByRole('button',{name:'Declinar',exact:true}).click();await page.getByText('Declinado y verificado: '+remaining.title+'.',{exact:true}).waitFor();
   await page.getByRole('button',{name:'Humano',exact:true}).click();await page.getByRole('heading',{name:'Humano',exact:true}).waitFor();
   await page.waitForFunction(()=>S.human.data&&S.human.kind==='all'&&!S.human.loading);
   assert.ok(await page.locator('#human-nav-count').innerText());
+  assert.equal(await page.evaluate(()=>S.human.data.results.some(i=>i.kind==='note')),false,'Ordinary note contents do not enter the required decision queue');
+  assert.equal(await page.evaluate(()=>S.human.countData.total_pending===S.human.countData.counts.links+S.human.countData.counts.person+S.human.countData.counts.meeting),true,'Badge excludes optional content reviews');
   await page.screenshot({path:path.join(out,'humano-escritorio.png'),fullPage:true});
   console.log('Links passed.');
   // Meeting action approvals are explicit and land in TODO, decisions can be declined.
@@ -70,7 +86,7 @@ const out=process.env.HUMAN_SCREENSHOT_DIR||path.join(process.cwd(),'artifacts',
   await page.getByRole('button',{name:'Guardar aclaración',exact:true}).click();await page.getByText('Aclaración guardada y verificada: '+question.title+'.',{exact:true}).waitFor();
   console.log('Questions passed.');
   // Protected drafts can be reviewed by the owner without changing their IA permissions.
-  await page.getByRole('button',{name:/^Notas por revisar ·/}).click();await page.waitForFunction(()=>S.human.kind==='note'&&!S.human.loading);
+  await page.getByRole('button',{name:/^Revisión opcional ·/}).click();await page.waitForFunction(()=>S.human.kind==='note'&&!S.human.loading);
   await page.locator('#human-query').fill('Síntesis protegida');await page.getByRole('button',{name:'Buscar pendientes',exact:true}).click();
   await page.waitForFunction(()=>!S.human.loading&&S.human.data.total===1);
   await page.locator('.human-card').getByRole('button',{name:'Revisar',exact:true}).click();await page.getByLabel('Confirmo la revisión del contenido mostrado',{exact:true}).waitFor();
@@ -89,7 +105,7 @@ const out=process.env.HUMAN_SCREENSHOT_DIR||path.join(process.cwd(),'artifacts',
   assert.equal(await page.evaluate(()=>S.token),session,'Session preserved across reload and human decisions');
   assert.equal(await page.locator('.human-workspace img').count(),0,'Untrusted note labels escape HTML');
   // Skip across pages and at the final/only item without losing pending entries or writing.
-  await page.getByRole('button',{name:/^Notas por revisar ·/}).click();await page.waitForFunction(()=>S.human.kind==='note'&&!S.human.loading);
+  await page.getByRole('button',{name:/^Revisión opcional ·/}).click();await page.waitForFunction(()=>S.human.kind==='note'&&!S.human.loading);
   const lastOnPage=await page.evaluate(()=>S.human.data.results.at(-1));const navWrites=writes.length;
   await page.locator('.human-card button[data-key="'+lastOnPage.key+'"]').click();await page.waitForFunction(()=>!!S.human.detail&&!S.human.detailBusy);
   await page.route('**/api/human/queue**',route=>route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({detail:'Página siguiente no disponible (prueba sintética)'})}),{times:1});
