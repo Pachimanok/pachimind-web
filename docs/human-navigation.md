@@ -41,3 +41,18 @@ agrupa las notas sin revisar sólo al elegirla; no incrementa el badge principal
 no se impone como paso previo ni cambia estados o permisos automáticamente.
 Assets 20261111-human4. Requiere publicar también API y server.cjs y reiniciar
 API/Node por la ruta de actualización; MCP/OAuth permanecen conservados.
+
+## Limpiar la revisión opcional
+
+En Revisión opcional, Limpiar avisos sin revisar oculta los avisos de la búsqueda
+actual, incluyendo todas sus páginas. Dejar vacía la búsqueda para limpiar todos.
+No se abren contenidos ni se marca revisado, no se archivan notas ni se cambian
+permisos o propuestas. Un aviso reaparece si cambia la versión de su nota.
+
+Ver avisos ocultos muestra los avisos apartados; Volver a mostrar avisos revierte
+la preferencia con el mismo alcance de filtro. Una lista que cambia desde la carga
+pide actualizar antes de limpiar. Reintentos tras una respuesta perdida reutilizan
+el ID y recuperan el mismo recibo, sin repetir operaciones ni decisiones.
+
+Assets 20261111-human5 y gateway/API coordinados. Sólo API y Node requieren reinicio;
+MCP/OAuth conservados. La publicación no ejecuta limpiezas sobre datos reales.

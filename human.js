@@ -1,6 +1,6 @@
 // Human inbox: previews are reads; every decision needs a separate explicit action.
 const HUMAN_LABELS={all:'Decisiones pendientes',links:'Vínculos',person:'Fichas y aclaraciones',meeting:'Acciones y decisiones',note:'Revisión opcional'};
-function newHumanState(){return {kind:'all',q:'',page:1,data:null,loading:false,error:null,request:0,detail:null,detailKey:null,detailBusy:false,detailRequest:0,authorized:false,answer:'',busy:false,receipts:[],requests:{},uncertain:null,countData:null,navigationNotice:null,refreshRequests:{}};}
+function newHumanState(){return {kind:'all',q:'',page:1,data:null,loading:false,error:null,request:0,detail:null,detailKey:null,detailBusy:false,detailRequest:0,authorized:false,answer:'',busy:false,receipts:[],requests:{},uncertain:null,countData:null,navigationNotice:null,refreshRequests:{},optionalHidden:false,optionalRequests:{}};}
 function humanState(){return S.human||(S.human=newHumanState());}
 function humanRender(){const el=document.querySelector('.main-content'),top=el?.scrollTop||0;render();const next=document.querySelector('.main-content');if(next)next.scrollTop=top;}
 async function humanRequest(path,options={}){
@@ -17,7 +17,7 @@ function humanBadge(data){humanState().countData=data;const badge=document.getEl
 async function loadHumanCount(){if(!S.token)return;try{humanBadge(await humanRequest('/summary'));}catch{const badge=document.getElementById('human-nav-count');if(badge){badge.textContent='!';badge.style.display='';badge.title='No se pudo actualizar el contador de pendientes';}}}
 async function loadHuman(){
  const h=humanState(),serial=++h.request;h.loading=true;h.error=null;humanRender();
- try{const d=await humanRequest('/queue?'+new URLSearchParams({kind:h.kind,q:h.q,page:h.page,per_page:15}));if(serial!==h.request)return;h.data=d;humanBadge(d);}
+ try{const d=await humanRequest('/queue?'+new URLSearchParams({kind:h.kind,q:h.q,page:h.page,per_page:15,hidden:h.kind==='note'&&h.optionalHidden?'true':'false'}));if(serial!==h.request)return;h.data=d;humanBadge(d);}
  catch(e){if(serial===h.request)h.error=e.message;}
  finally{if(serial===h.request){h.loading=false;humanRender();}}
 }
@@ -38,7 +38,7 @@ async function humanContinue(){
  h.navigationNotice='Llegaste al final de esta vista. Los pendientes sin resolver siguen en la lista.';humanRender();document.getElementById('human-feedback')?.scrollIntoView({block:'nearest'});
 }
 function humanNavigation(){const h=humanState();return `<div class="human-navigation" aria-label="Continuar la revisión"><button type="button" class="btn btn-primary" onclick="humanContinue()" ${h.busy||h.loading||h.detailBusy||h.uncertain?'disabled':''}>Dejar pendiente y seguir</button><button type="button" class="btn btn-ghost" onclick="humanClose()" ${h.busy?'disabled':''}>Volver a la lista</button><small>Seguir conserva este pendiente, sin aprobarlo ni declinarlo.</small></div>`;}
-function humanFilter(kind){const h=humanState();if(h.busy||h.loading)return;humanResetDetail();h.navigationNotice=null;h.kind=kind;h.page=1;loadHuman();}
+function humanFilter(kind){const h=humanState();if(h.busy||h.loading)return;humanResetDetail();h.navigationNotice=null;h.optionalHidden=false;h.kind=kind;h.page=1;loadHuman();}
 function humanSearch(){const h=humanState();if(h.busy||h.loading)return;h.q=document.getElementById('human-query').value;humanResetDetail();h.navigationNotice=null;h.page=1;loadHuman();}
 function humanPage(delta){const h=humanState();if(h.busy||h.loading)return;humanResetDetail();h.navigationNotice=null;h.page=Math.max(1,h.page+delta);loadHuman();}
 function humanPath(key){const [kind,id]=key.split(':');return '/items/'+encodeURIComponent(kind)+'/'+encodeURIComponent(id);}
@@ -95,6 +95,25 @@ async function humanUpdateLinks(){
  finally{h.busy=false;humanRender();document.getElementById(h.error?'human-feedback':'human-detail')?.scrollIntoView({block:'nearest'});}
 }
 
+function humanOptionalToggle(){const h=humanState();if(h.busy||h.loading)return;humanResetDetail();h.navigationNotice=null;h.optionalHidden=!h.optionalHidden;h.page=1;loadHuman();}
+async function humanOptionalClean(){
+ const h=humanState(),selection=h.data?.optional;if(h.busy||h.loading||h.uncertain||h.kind!=='note'||!selection?.selection_count)return;
+ const action=h.optionalHidden?'restore':'hide',key=action+':'+selection.selection_revision+':'+h.q;
+ const payload=h.optionalRequests[key]||(h.optionalRequests[key]={request_id:crypto.randomUUID(),action,q:h.q,revision:selection.selection_revision});
+ h.busy=true;humanResetDetail();h.navigationNotice=null;humanRender();
+ try{
+  let result;
+  for(let attempt=0;attempt<2;attempt++){
+   try{result=await humanRequest('/optional-notes/visibility',{method:'POST',body:JSON.stringify(payload)});break;}
+   catch(e){if(attempt||e.status&&e.status<500)throw e;}
+  }
+  if(!result?.verified||result.action!==action)throw new Error('No se pudo confirmar la limpieza. Reintentá con el mismo botón.');
+  h.navigationNotice=result.affected+' avisos '+(action==='hide'?'ocultados sin revisar':'restaurados')+'. El contenido, el estado y los permisos de las notas se conservan.';
+  h.page=1;await loadHuman();
+ }catch(e){h.error=e.message;}
+ finally{h.busy=false;humanRender();document.getElementById('human-feedback')?.scrollIntoView({block:'nearest'});}
+}
+
 function renderHumanDetail(d){
  const h=humanState(),questionsOnly=d.kind==='person'&&!Object.keys(d.fields||{}).length;
  const index=h.data?.results.findIndex(i=>i.key===d.key)??-1;
@@ -124,9 +143,10 @@ function renderHuman(heading='Humano'){
  </div><div class="human-tabs" aria-label="Tipos de pendientes">${Object.entries(HUMAN_LABELS).map(([k,label])=>`<button type="button" class="btn ${h.kind===k?'btn-primary':'btn-ghost'}" aria-pressed="${h.kind===k}" data-kind="${k}" onclick="humanFilter(this.dataset.kind)" ${h.busy||h.loading?'disabled':''}>${label}${k==='all'?d||h.countData?' · '+(d?.total_pending??h.countData.total_pending):'':' · '+(counts[k]||0)}</button>`).join('')}</div>
  ${h.kind==='note'?'<p class="human-optional">Revisión opcional. No necesitás releer todas tus notas para usar PachiMind. Estas notas conservan su estado y permisos; no suman al contador de decisiones pendientes.</p>':''}
  <form class="human-search" onsubmit="event.preventDefault();humanSearch()"><label for="human-query">Buscar pendiente</label><div><input class="fi" id="human-query" maxlength="200" placeholder="Título o ruta" value="${esc(h.q)}" oninput="S.human.q=this.value"><button type="submit" class="btn btn-ghost" ${h.busy||h.loading?'disabled':''}>Buscar pendientes</button></div></form>
- ${h.loading?'<p role="status">Cargando tus pendientes…</p>':d?`<p class="human-muted">${d.total} ${h.kind==='note'?'notas disponibles para revisión opcional':'decisiones pendientes en esta vista'} · página ${d.page} de ${Math.max(1,Math.ceil(d.total/d.per_page))}. Se muestran sólo los permitidos para tu cuenta.</p>`:!h.error?'<p role="status">Consultando pendientes…</p>':''}
+ ${h.kind==='note'&&d?.optional?`<section class="human-optional-tools" aria-label="Avisos de revisión opcional"><div><strong>${h.optionalHidden?'Avisos ocultos':'Avisos opcionales'}</strong><p>La acción afecta ${d.optional.selection_count} notas de esta búsqueda, incluidas todas sus páginas. ${h.optionalHidden?'Volverán a aparecer sólo como avisos opcionales.':'Se ocultan los avisos sin revisar ni aprobar las notas. Si una nota cambia, su aviso vuelve a aparecer.'}</p></div><div><button type="button" class="btn btn-primary" onclick="humanOptionalClean()" ${!d.optional.selection_count||h.busy||h.loading||h.uncertain?'disabled':''}>${h.optionalHidden?'Volver a mostrar avisos':'Limpiar avisos sin revisar'}</button><button type="button" class="btn btn-ghost" onclick="humanOptionalToggle()" ${h.busy||h.loading||!h.optionalHidden&&!d.optional.hidden_count?'disabled':''}>${h.optionalHidden?'Ver avisos activos':'Ver avisos ocultos ('+d.optional.hidden_count+')'}</button></div></section>`:''}
+ ${h.loading?'<p role="status">Cargando tus pendientes…</p>':d?`<p class="human-muted">${d.total} ${h.kind==='note'?(h.optionalHidden?'avisos ocultos':'avisos de revisión opcional'):'decisiones pendientes en esta vista'} · página ${d.page} de ${Math.max(1,Math.ceil(d.total/d.per_page))}. Se muestran sólo los permitidos para tu cuenta.</p>`:!h.error?'<p role="status">Consultando pendientes…</p>':''}
  ${h.detailBusy?'<section id="human-detail" class="human-detail"><p role="status">Comprobando la propuesta y sus revisiones…</p></section>':h.detailKey&&!h.detail?`<section id="human-detail" class="human-detail"><p role="alert" class="human-alert">${esc(h.error||'No se pudo abrir la propuesta.')}</p><button type="button" class="btn btn-ghost" data-key="${esc(h.detailKey)}" onclick="humanOpen(this.dataset.key)">Reintentar comprobación</button>${humanNavigation()}</section>`:''}
  ${h.detail&&h.detailKey===h.detail.key?renderHumanDetail(h.detail):''}
- ${!h.loading&&d?`<div class="human-list">${d.results.map(i=>`<article class="human-card"><div><span class="human-kind">${esc(i.category)}</span><h2>${esc(i.title)}</h2><p>${esc(i.summary)}</p><small>${esc(i.source.path)}</small></div><button type="button" class="btn btn-ghost" data-key="${esc(i.key)}" onclick="humanOpen(this.dataset.key)" ${h.busy||h.loading?'disabled':''}>Revisar</button></article>`).join('')||(!h.error?`<p class="human-empty">${h.kind==='note'?'No hay notas para revisión opcional.':'No hay decisiones pendientes en esta vista.'}</p>`:'')}</div><footer class="human-pagination"><button type="button" class="btn btn-ghost" onclick="humanPage(-1)" ${h.page<=1||h.busy||h.loading?'disabled':''}>Anterior</button><button type="button" class="btn btn-ghost" onclick="humanPage(1)" ${h.page*d.per_page>=d.total||h.busy||h.loading?'disabled':''}>Siguiente</button></footer>`:''}
+ ${!h.loading&&d?`<div class="human-list">${d.results.map(i=>`<article class="human-card"><div><span class="human-kind">${esc(i.category)}</span><h2>${esc(i.title)}</h2><p>${esc(i.summary)}</p><small>${esc(i.source.path)}</small></div><button type="button" class="btn btn-ghost" data-key="${esc(i.key)}" onclick="humanOpen(this.dataset.key)" ${h.busy||h.loading?'disabled':''}>Revisar</button></article>`).join('')||(!h.error?`<p class="human-empty">${h.kind==='note'?(h.optionalHidden?'No hay avisos ocultos en esta búsqueda.':'La lista de avisos opcionales está limpia.'):'No hay decisiones pendientes en esta vista.'}</p>`:'')}</div><footer class="human-pagination"><button type="button" class="btn btn-ghost" onclick="humanPage(-1)" ${h.page<=1||h.busy||h.loading?'disabled':''}>Anterior</button><button type="button" class="btn btn-ghost" onclick="humanPage(1)" ${h.page*d.per_page>=d.total||h.busy||h.loading?'disabled':''}>Siguiente</button></footer>`:''}
  </section>`;
 }

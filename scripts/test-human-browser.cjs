@@ -128,6 +128,37 @@ const out=process.env.HUMAN_SCREENSHOT_DIR||path.join(process.cwd(),'artifacts',
   assert.equal(await page.locator('#human-detail').count(),0);assert.equal(await page.locator('.human-card').count(),1,'Single skipped item remains available');
   assert.equal(writes.length,navWrites,'Navigation, including page failures, is read-only');
   console.log('Conflict/next-page/final/single-item navigation passed without writes.');
+  // Clean optional notices without reviewing notes: scope, persistence, recovery and undo.
+  const example=await page.evaluate(()=>S.human.data.results[0]);
+  const originalNote=await page.evaluate(async id=>await peopleRequest('/notes/'+id),example.id);
+  const pendingBefore=await page.evaluate(()=>S.human.data.total_pending);
+  const decisionsBefore=writes.filter(url=>url.endsWith('/decision')).length;
+  let detailReads=0;page.on('request',r=>{if(r.method()==='GET'&&r.url().includes('/api/human/items/note/'))detailReads++});
+  const cleanupIds=[];page.on('request',r=>{if(r.method()==='POST'&&r.url().endsWith('/optional-notes/visibility'))cleanupIds.push(r.postDataJSON().request_id)});
+  await page.route('**/api/human/optional-notes/visibility',async route=>{await route.fetch();await route.abort('failed');},{times:1});
+  await page.getByRole('button',{name:'Limpiar avisos sin revisar',exact:true}).click();
+  await page.waitForFunction(()=>!S.human.busy&&!S.human.loading&&S.human.data.total===0&&S.human.data.optional.hidden_count===1);
+  assert.ok(cleanupIds.length>=2);assert.equal(new Set(cleanupIds).size,1,'Lost cleanup response reuses the same operation ID');
+  assert.equal(detailReads,0,'Cleaning does not open note contents for review');
+  assert.deepEqual(await page.evaluate(async id=>await peopleRequest('/notes/'+id),example.id),originalNote,'Notice cleanup changes no note metadata, content or revision');
+  await page.getByRole('button',{name:'Ver avisos ocultos (1)',exact:true}).click();await page.waitForFunction(()=>S.human.optionalHidden&&!S.human.loading&&S.human.data.total===1);
+  await page.getByRole('button',{name:'Volver a mostrar avisos',exact:true}).click();await page.waitForFunction(()=>!S.human.busy&&!S.human.loading&&S.human.data.total===0&&S.human.data.optional.hidden_count===0);
+  await page.getByRole('button',{name:'Ver avisos activos',exact:true}).click();await page.waitForFunction(()=>!S.human.optionalHidden&&!S.human.loading&&S.human.data.total===1);
+  await page.locator('#human-query').fill('');await page.getByRole('button',{name:'Buscar pendientes',exact:true}).click();await page.waitForFunction(()=>!S.human.loading&&S.human.data.total>15);
+  const totalNotices=await page.evaluate(()=>S.human.data.total);
+  await page.getByRole('button',{name:'Limpiar avisos sin revisar',exact:true}).click();await page.waitForFunction(()=>!S.human.busy&&!S.human.loading&&S.human.data.total===0);
+  assert.equal(await page.evaluate(()=>S.human.data.optional.hidden_count),totalNotices,'Clean includes all result pages');
+  await page.reload();await page.getByRole('heading',{name:'Humano',exact:true}).waitFor();await page.waitForFunction(()=>!!S.human.data&&!S.human.loading);
+  await page.getByRole('button',{name:/^Revisión opcional ·/}).click();await page.waitForFunction(()=>S.human.kind==='note'&&!S.human.loading);
+  await page.getByText('La lista de avisos opcionales está limpia.',{exact:true}).waitFor();
+  assert.equal(await page.evaluate(()=>S.human.data.total_pending),pendingBefore,'Decision queue unchanged by optional cleanup');
+  await page.getByRole('button',{name:'Ver avisos ocultos ('+totalNotices+')',exact:true}).click();await page.waitForFunction(()=>S.human.optionalHidden&&!S.human.loading);
+  await page.getByRole('button',{name:'Volver a mostrar avisos',exact:true}).click();await page.waitForFunction(()=>!S.human.busy&&!S.human.loading&&S.human.data.total===0);
+  await page.getByRole('button',{name:'Ver avisos activos',exact:true}).click();await page.waitForFunction(()=>!S.human.optionalHidden&&!S.human.loading);
+  assert.equal(await page.evaluate(()=>S.human.data.total),totalNotices,'Restoring recovers the original notice count');
+  assert.equal(writes.filter(url=>url.endsWith('/decision')).length,decisionsBefore,'Cleanup never approves or declines notes or decisions');
+  const deniedCleanup=await page.evaluate(async()=>({none:(await fetch('/api/human/optional-notes/visibility',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})).status,key:(await fetch('/api/human/optional-notes/visibility',{method:'POST',headers:{'Content-Type':'application/json','X-API-Key':'test-personal'},body:'{}'})).status}));assert.deepEqual(deniedCleanup,{none:401,key:401});
+  console.log('Optional notices: filtered/all-page cleanup, lost-response recovery, no content review or approval, persistence, undo and session isolation passed.');
   for(const viewport of [{width:390,height:844},{width:768,height:1024}]){await page.setViewportSize(viewport);await page.screenshot({path:path.join(out,'humano-'+viewport.width+'.png'),fullPage:true});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);}
   assert.deepEqual(errors,[]);
   console.log('Human browser OK: direct-link loading, check/checkbox/apply, visible conflicts and decline, consolidated categories, meeting actions/decisions, questions, protected notes, lost-response recovery, owner-session auth, session/reload, XSS and mobile.');
