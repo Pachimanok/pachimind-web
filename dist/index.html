@@ -330,7 +330,7 @@ const S={
   searchQ:'',searchResults:null,searchLoading:false,
   nnStep:'input',nnTitle:'',nnContent:'',nnParsed:null,nnResult:null,nnError:null,nnConfirming:false,nnManualResp:'',
   recorder:null,recording:false,recTimer:null,recSecs:0,transcribing:false,
-  ibAccess:null,ibStep:'list',ibDrafts:[],ibLoading:false,ibError:null,ibNote:null,ibParsed:null,ibResult:null,ibConfirming:false,ibManualResp:'',
+  ibClassification:null,ibClassificationCommand:null,ibClassificationConfirmed:false,ibAccess:null,ibStep:'list',ibDrafts:[],ibLoading:false,ibError:null,ibNote:null,ibParsed:null,ibResult:null,ibConfirming:false,ibManualResp:'',
   paLoading:false,paTotal:0,paDone:0,paResults:[],paError:null,
   enTab:'persona',enList:{},enLoading:false,enError:null,
   enStep:'list',enForm:{title:'',tipo:'persona',area:'Laboral',organizacion:'',cliente:'',rol:'',tags:'',content:''},
@@ -597,7 +597,7 @@ function buildOverlayHTML(){
             ${tags.map(t=>`<span class="tag ac">${t}</span>`).join('')}
             ${(m.tags||[]).map(t=>`<span class="tag">#${t}</span>`).join('')}
           </div>
-          ${(m.estado==='borrador'||m.acceso_inbox_ia)?`<button type="button" class="btn btn-ghost" style="margin:10px 0" onclick="inboxMcpOpen(S.openNote.id)">Acceso MCP</button>`:''}
+          ${(m.estado==='borrador'||m.acceso_inbox_ia)?`${inboxMcpBadge(n)}<button type="button" class="btn btn-ghost" style="margin:10px 0" onclick="inboxMcpOpen(S.openNote.id)">Acceso MCP</button>`:''}
           ${renderNoteAssociations()}
           <div class="meta-grid">
             ${m.cliente?`<div class="mg"><div class="mg-k">Cliente</div><div class="mg-v">${esc(m.cliente)}</div></div>`:''}
@@ -952,10 +952,12 @@ function renderIbList(){
     ${S.ibError?`<div class="alert-err">${S.ibError}</div>`:''}
     ${!S.ibLoading&&!S.ibDrafts.length?`<div class="empty-state"><div class="es-icon">▽</div><div class="es-text">Inbox vacío</div></div>`:''}
     ${S.ibDrafts.map((d,i)=>`
-      <div style="background:var(--bg2);border:1px solid var(--b);border-radius:var(--r);padding:13px 15px;cursor:pointer;margin-bottom:8px;display:flex;gap:10px;align-items:flex-start;transition:border-color .15s" onmouseover="this.style.borderColor='var(--bb)'" onmouseout="this.style.borderColor='var(--b)'" onclick="selectDraft(${i})">
+      <div style="background:var(--bg2);border:1px solid var(--b);border-radius:var(--r);padding:13px 15px;cursor:pointer;margin-bottom:8px;display:flex;gap:10px;align-items:flex-start;transition:border-color .15s" onmouseover="this.style.borderColor='var(--bb)'" onmouseout="this.style.borderColor='var(--b)'" onclick="selectDraft(${i})" data-inbox-note-id="${esc(d.id)}">
         <span style="color:var(--tx3);font-size:14px;flex-shrink:0">◇</span>
         <div style="flex:1;min-width:0">
           <div style="font-family:'Fraunces',serif;font-size:14px;font-weight:600;margin-bottom:3px">${esc(d.title)}</div>
+          ${inboxMcpBadge(d)}
+          ${d.inbox_classification?.state==='pending'?'<div style="font-size:12px;color:var(--ac)">Clasificación MCP pendiente de confirmar</div>':''}
           ${d.excerpt?`<div style="font-size:12px;color:var(--tx3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(d.excerpt)}</div>`:''}
         </div>
         <div class="inbox-mcp-card-actions"><button type="button" class="btn btn-ghost" data-inbox-access-id="${esc(d.id)}" onclick="event.stopPropagation();inboxMcpOpen(this.dataset.inboxAccessId)">Acceso MCP</button><span style="color:var(--tx3)">→</span></div>
@@ -966,7 +968,8 @@ function renderIbRead(){
   return`
     <button class="btn-back" onclick="S.ibStep='list';render()">‹ Inbox</button>
     <div class="section-title" style="font-size:16px">${esc(n.title)}</div>
-    <button type="button" class="btn btn-ghost" style="margin:12px 0" onclick="inboxMcpOpen(S.ibNote.id)">Acceso MCP</button>
+    ${inboxMcpBadge(n)}<button type="button" class="btn btn-ghost" style="margin:12px 0" onclick="inboxMcpOpen(S.ibNote.id)">Acceso MCP</button>
+    ${n.inbox_classification?.state==='pending'?'<button class="btn btn-primary btn-full" onclick="reviewInboxClassification()">Revisar clasificación MCP</button>':''}
     <div style="background:var(--bg2);border:1px solid var(--b);border-radius:var(--r);padding:12px;max-height:200px;overflow-y:auto;font-family:'JetBrains Mono',monospace;font-size:11.5px;line-height:1.75;color:var(--tx2);white-space:pre-wrap;margin:14px 0">${esc(n.content||n.excerpt||'(sin contenido)')}</div>
     <button class="btn btn-gemini btn-full" onclick="clasificarInbox()">✦ Clasificar con Gemini</button>
     <div class="or-row">o</div>
@@ -986,21 +989,22 @@ function renderIbReview(){
   return`
     <button class="btn-back" onclick="S.ibStep='read';render()">‹ volver</button>
     <div class="section-title" style="font-size:16px">Clasificación</div>
-    <div class="review-box">
+    <fieldset class="review-box" style="min-width:0" ${S.ibClassificationCommand?'disabled':''}>
       <label class="field-label">Título</label>
       <input class="fi" style="margin-bottom:8px" value="${esc(p.title)}" oninput="S.ibParsed.title=this.value">
       ${p.comment?`<div class="gemini-note">"${esc(p.comment)}"</div>`:''}
-      ${renderFields('ibParsed')}
+      ${S.ibClassification?`<label class="field-label">Tipo</label><select class="fsel" onchange="S.ibParsed.tipo=this.value">${['nota','recurso','idea','registro'].map(t=>`<option ${p.tipo===t?'selected':''}>${t}</option>`).join('')}</select><label class="field-label">Ámbito</label><select class="fsel" onchange="S.ibParsed.area=this.value">${['Laboral','Personal','Familia','Amigos','Apostolado'].map(t=>`<option ${p.area===t?'selected':''}>${t}</option>`).join('')}</select>`:renderFields('ibParsed')}
       <label class="field-label" style="margin-top:12px">Tags</label>
       <input class="fsel fsel-w" value="${esc((p.tags||[]).join(', '))}" oninput="S.ibParsed.tags=this.value.split(',').map(t=>t.trim()).filter(Boolean)">
       <label class="field-label">Contenido</label>
       <textarea class="fi" style="min-height:100px;margin-bottom:0" oninput="S.ibParsed.content=this.value">${esc(p.content)}</textarea>
-    </div>
+    </fieldset>
+    ${S.ibClassification?`<p class="hint">Se guardará una nota derivada. El original se conserva intacto y sale del Inbox. No se crean tareas ni decisiones.</p><label style="display:flex;gap:8px;margin:14px 0"><input type="checkbox" aria-label="Confirmo esta clasificación" ${S.ibClassificationConfirmed?'checked':''} ${S.ibClassificationCommand?'disabled':''} onchange="S.ibClassificationConfirmed=this.checked;render()">Confirmo esta clasificación y el procesamiento de este borrador.</label>`:''}
     ${S.ibError?`<div class="alert-err">${S.ibError}</div>`:''}
-    <button class="btn btn-primary btn-full" onclick="confirmarInbox()">
+    <button class="btn btn-primary btn-full" onclick="confirmarInbox()" ${S.ibClassification&&(!S.ibClassificationConfirmed||S.ibConfirming||S.ibClassificationStale)?'disabled':''}>
       ${S.ibConfirming?'<div class="spinner" style="width:13px;height:13px;border-width:1.5px;border-top-color:#080600"></div>':''} Guardar en el vault
     </button>
-    <p class="hint">El borrador se archivará automáticamente</p>`
+    ${S.ibClassification?`<button class="btn btn-ghost btn-full" onclick="decideInboxClassification('decline')" ${!S.ibClassificationConfirmed||S.ibConfirming||S.ibClassificationStale?'disabled':''}>Declinar clasificación</button>${S.ibClassificationStale?'<button class="btn btn-ghost btn-full" onclick="reviewInboxClassification()">Volver a comprobar propuesta</button>':''}`:'<p class="hint">El borrador se archivará automáticamente</p>'}`
 }
 function renderIbManual(){
   return`
@@ -1266,6 +1270,37 @@ function resetNueva(){S.nnStep='input';S.nnTitle='';S.nnContent='';S.nnParsed=nu
 // ══════════════════════════════════════════════════════════
 // INBOX ACTIONS
 // ══════════════════════════════════════════════════════════
+function inboxMcpBadge(note){
+ const access=note?.mcp_access;
+ const text=!access?'MCP: sin comprobar':access.available?'MCP: habilitado':'MCP: no habilitado';
+ const detail=access?.available?'Los agentes pueden leer esta nota. '+(access.editable_original&&!access.source_immutable?'La edición depende de cada herramienta.':'El original está protegido contra edición IA.'):'La lectura desde MCP no está habilitada o tiene restricciones adicionales.';
+ return `<span data-mcp-status="${access?access.available?'enabled':'blocked':'unknown'}" role="status" title="${esc(detail)}" style="font-size:11px;display:inline-block;line-height:1.5;color:${access?.available?'var(--ac2)':'var(--tx2)'}">${text}</span>`;
+}
+async function reviewInboxClassification(){
+ S.ibError=null;
+ try{
+  const state=await captureJSON('/inbox/'+encodeURIComponent(S.ibNote.id)+'/classification');
+  if(!state.proposal||state.proposal.state!=='pending')throw new Error('Esta clasificación ya no está pendiente. Actualizá el Inbox.');
+  if(state.source_changed)throw new Error('La nota o su acceso cambió. Pedí al agente una clasificación actualizada.');
+  S.ibClassification=state;S.ibClassificationCommand=null;S.ibClassificationConfirmed=false;S.ibClassificationStale=false;
+  const c=state.proposal.classification;S.ibParsed={...c,estado:'activo',content:c.content??S.ibNote.content??'',personas:[]};S.ibStep='reviewing';
+ }catch(e){S.ibError=e.message;}
+ render();
+}
+async function decideInboxClassification(decision){
+ if(!S.ibClassificationConfirmed||S.ibConfirming||S.ibClassificationStale)return;
+ S.ibClassificationCommand=S.ibClassificationCommand||{request_id:crypto.randomUUID(),revision:S.ibClassification.revision,decision,confirmed:true,
+  classification:decision==='approve'?{title:S.ibParsed.title,tipo:S.ibParsed.tipo,area:S.ibParsed.area,tags:S.ibParsed.tags||[],content:S.ibParsed.content,comment:S.ibParsed.comment||''}:null};
+ if(S.ibClassificationCommand.decision!==decision){S.ibError='Comprobá el resultado del intento anterior antes de cambiar la decisión.';render();return;}
+ S.ibConfirming=true;S.ibError=null;render();
+ try{
+  const result=await humanRequest('/inbox-classification/'+encodeURIComponent(S.ibNote.id)+'/decision',{method:'POST',body:JSON.stringify(S.ibClassificationCommand)});
+  if(!result.verified)throw new Error('No se confirmó el resultado. Reintentá la misma operación.');
+  if(result.state==='approved'){S.ibResult=result;S.ibStep='done';await loadAll();}else{resetIb();}
+ }catch(e){S.ibError=e.message;if([403,404,409,422].includes(e.status))S.ibClassificationStale=true;}
+ finally{S.ibConfirming=false;render();}
+}
+
 // Per-note owner consent; no bulk enabling or automatic approval.
 async function inboxMcpOpen(id){
  if(S.ibAccess?.busy)return;
@@ -1288,7 +1323,7 @@ async function inboxMcpCommit(){
   const result=await humanRequest('/inbox-access/'+encodeURIComponent(a.id),{method:'POST',body:JSON.stringify(a.command)});
   if(!result.verified||result.id!==a.id)throw new Error('La respuesta no confirmó el acceso. Comprobalo antes de volver a autorizar.');
   a.result=result;a.data=result.access;
-  try{const note=await captureJSON('/notes/'+encodeURIComponent(a.id));if(S.ibNote?.id===a.id)S.ibNote=note;if(S.openNote?.id===a.id)S.openNote=note;S.ibDrafts=S.ibDrafts.map(n=>n.id===a.id?{...n,metadata:note.metadata}:n);}catch{a.refreshNotice='El permiso se guardó. Actualizá la lista para renovar su vista.';}
+  try{const note=await captureJSON('/notes/'+encodeURIComponent(a.id));if(S.ibNote?.id===a.id)S.ibNote=note;if(S.openNote?.id===a.id)S.openNote=note;S.ibDrafts=S.ibDrafts.map(n=>n.id===a.id?{...n,metadata:note.metadata,mcp_access:note.mcp_access,inbox_classification:note.inbox_classification}:n);}catch{a.refreshNotice='El permiso se guardó. Actualizá la lista para renovar su vista.';}
  }catch(e){a.error=e.message;if([403,404,409,422].includes(e.status)){a.needsRefresh=true;a.confirmed=false;}}
  finally{a.busy=false;render();}
 }
@@ -1306,12 +1341,14 @@ function renderInboxMcpDialog(){
 }
 
 async function selectDraft(i){
+  S.ibClassification=null;S.ibClassificationCommand=null;S.ibClassificationConfirmed=false;S.ibClassificationStale=false;
   S.ibNote=null;S.ibParsed=null;S.ibError=null;S.ibStep='list';S.ibLoading=true;render()
   try{const r=await api(`/notes/${encodeURIComponent(S.ibDrafts[i].id)}`);if(!r.ok)throw new Error();S.ibNote=await r.json();S.ibStep='read'}
   catch(e){S.ibError=e.message}
   S.ibLoading=false;render()
 }
 async function clasificarInbox(){
+  S.ibClassification=null;S.ibClassificationCommand=null;
   const btn=document.querySelector('#app .btn-gemini')
   if(btn){btn.disabled=true;btn.textContent='Clasificando...'}
   try{
@@ -1323,6 +1360,7 @@ async function clasificarInbox(){
   render()
 }
 async function confirmarInbox(){
+  if(S.ibClassification)return decideInboxClassification('approve');
   S.ibConfirming=true;S.ibError=null;render()
   try{
     const r=await api('/notes',{method:'POST',body:JSON.stringify({title:S.ibParsed.title,tipo:S.ibParsed.tipo,area:S.ibParsed.area,estado:S.ibParsed.estado,content:S.ibParsed.content,tags:S.ibParsed.tags,cliente:S.ibParsed.cliente||null,personas:S.ibParsed.personas,source_draft_id:S.ibNote.id})})
@@ -1337,12 +1375,13 @@ async function copyPromptIb(){
   if(btn){btn.textContent='✓ Copiado';setTimeout(()=>{if(btn)btn.textContent='Copiar prompt'},2000)}
 }
 function parseIbManual(){
+  S.ibClassification=null;S.ibClassificationCommand=null;
   const raw=document.getElementById('ib-manual-resp')?.value||''
   S.ibManualResp=raw;S.ibError=null
   try{S.ibParsed=parseGemini(raw);if(!S.ibParsed.content?.trim())S.ibParsed.content=S.ibNote.content||S.ibNote.excerpt||'';S.ibStep='reviewing';render()}
   catch(e){S.ibError=e.message;render()}
 }
-function resetIb(){S.ibStep='list';S.ibNote=null;S.ibParsed=null;S.ibResult=null;S.ibError=null;loadInbox();render()}
+function resetIb(){S.ibClassification=null;S.ibClassificationCommand=null;S.ibClassificationConfirmed=false;S.ibStep='list';S.ibNote=null;S.ibParsed=null;S.ibResult=null;S.ibError=null;loadInbox();render()}
 async function processAllInbox(){
   S.paLoading=true;S.paTotal=0;S.paDone=0;S.paResults=[];S.paError=null;render()
   try{
