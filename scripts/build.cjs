@@ -11,4 +11,4 @@ for(const root of (process.env.NODE_PATH||'').split(path.delimiter).filter(Boole
   if(label!=='node_modules')bundle=bundle.split(label+'/').join('node_modules/');
 }
 fs.writeFileSync('dist/server.cjs',bundle);
-for(const name of ['index.html','manifest.json','icon.svg','people.js','people.css','associations.js','associations.css','relationship-review.js','human.js','human.css'])fs.copyFileSync(name,'dist/'+name);
+for(const name of ['index.html','manifest.json','icon.svg','people.js','people.css','associations.js','associations.css','relationship-review.js','human.js','human.css','mobile.js','mobile.css','graph.js','graph.css'])fs.copyFileSync(name,'dist/'+name);

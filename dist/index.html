@@ -308,18 +308,23 @@
     ::-webkit-scrollbar-track{background:transparent}
     ::-webkit-scrollbar-thumb{background:var(--bb);border-radius:2px}
   </style>
+  <link rel="stylesheet" href="/graph.css?v=20261112-mobile-graph">
+  <link rel="stylesheet" href="/mobile.css?v=20261112-mobile-graph">
 </head>
 <body>
 <div id="app" style="display:flex;width:100%;min-height:100vh"></div>
 <script src="/people.js"></script>
-<script src="/human.js?v=20261112-inbox-access"></script>
+<script src="/human.js?v=20261112-mobile-graph"></script>
 <script src="/relationship-review.js?v=20261112-inbox-access"></script>
 <script src="/associations.js"></script>
+<script src="/mobile.js?v=20261112-mobile-graph"></script>
+<script src="/graph.js?v=20261112-mobile-graph"></script>
 <script>
 // ══════════════════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════════════════
 const S={
+  navOpen:false,searchOpen:false,
   token:sessionStorage.getItem('pm_token'),
   people:newPeopleState(),
   view:'tablero',
@@ -376,7 +381,8 @@ const VIEWS=[
   {id:'entidades',icon:'◆', label:'Entidades'},
   {id:'inbox',    icon:'▽', label:'Inbox',badge:true},
   {id:'chat',     icon:'◉', label:'Chat IA'},
-  {id:'vault',    icon:'⬡', label:'Vault'},
+  {id:'grafo',icon:'⬡',label:'Grafo'},
+  {id:'vault',    icon:'◇', label:'Vault'},
   {id:'tags',     icon:'#', label:'Tags'},
   {id:'sistema',  icon:'◇', label:'Sistema'},
 ]
@@ -396,6 +402,9 @@ async function api(path,opts={}){
 // RENDER
 // ══════════════════════════════════════════════════════════
 function render(){
+  const active=document.activeElement;
+  const inputFocus=active?.id&&['INPUT','TEXTAREA'].includes(active.tagName)?{id:active.id,start:active.selectionStart,end:active.selectionEnd}:null;
+  destroyGraphView();
   document.documentElement.setAttribute('data-theme',S.theme)
   const app=document.getElementById('app')
   const oldArea=app.querySelector('.main-area');
@@ -414,12 +423,13 @@ function render(){
       </div>
       <div class="sb-section">Navegación</div>
       ${VIEWS.map(v=>`
-        <button type="button" aria-label="${esc(v.label)}" class="nav-item${S.view===v.id?' on':''}" onclick="setView('${v.id}')">
+        <button type="button" aria-label="${esc(v.label)}" class="nav-item${MOBILE_PRIMARY.includes(v.id)?' mobile-primary':''}${S.view===v.id?' on':''}" onclick="setView('${v.id}')">
           <span class="ni-icon">${v.icon}</span>
           ${v.label}
           ${v.id==='humano'?`<span id="human-nav-count" class="ni-badge" style="${humanState().countData?.total_pending?'':'display:none'}">${humanState().countData?.total_pending||0}</span>`:''}
           ${v.badge&&S.drafts_count>0?`<span class="ni-badge">${S.drafts_count}</span>`:''}
         </button>`).join('')}
+      <button type="button" class="nav-item mobile-more${!MOBILE_PRIMARY.includes(S.view)?' on':''}" onclick="openNavigation()" aria-label="Más secciones" aria-haspopup="dialog" aria-expanded="${!!S.navOpen}"><span class="ni-icon" aria-hidden="true">☰</span>Más<span id="human-mobile-count" class="ni-badge" style="${humanState().countData?.total_pending?'':'display:none'}">${humanState().countData?.total_pending||0}</span></button>
       ${S.stats?`
         <div class="sb-stats">
           <div class="sb-stat">Notas totales <span>${S.stats.total_notes}</span></div>
@@ -429,16 +439,17 @@ function render(){
         </div>`:''}
     </div>
     <div class="main-area" data-scroll-view="${esc(S.view)}" data-search-mode="${showSearch}">
-      <div class="topbar">
+      <div class="topbar${S.searchOpen||S.searchQ?' search-open':''}">
         <div class="page-title">${currentView?.label||''}</div>
+        <button type="button" class="icon-button mobile-search-toggle" aria-label="Buscar en el vault" onclick="toggleMobileSearch()" aria-expanded="${!!S.searchOpen}">⌕</button>
         <div class="search-box">
           <span style="color:var(--tx3);font-size:12px">⌕</span>
-          <input id="search-inp" placeholder="Buscar en el vault..."
+          <input id="search-inp" aria-label="Buscar notas en el vault" placeholder="Buscar en el vault..."
             value="${esc(S.searchQ)}" oninput="onSearch(this.value)"
             onkeydown="if(event.key==='Escape'){S.searchQ='';S.searchResults=null;render()}">
         </div>
-        <span style="font-size:14px;color:var(--tx3);cursor:pointer;padding:4px;transition:color .2s;user-select:none" onclick="toggleTheme()" title="Cambiar tema">${S.theme==='dark'?'○':'●'}</span>
-        <span style="font-size:12px;color:var(--tx3);cursor:pointer;padding:4px;transition:color .2s" onmouseover="this.style.color='var(--tx)'" onmouseout="this.style.color='var(--tx3)'" onclick="logout()" title="Salir">⎋</span>
+        <button type="button" class="icon-button" onclick="toggleTheme()" aria-label="Cambiar tema" title="Cambiar tema">${S.theme==='dark'?'○':'●'}</button>
+        <button type="button" class="icon-button" onclick="logout()" aria-label="Salir" title="Salir">⎋</button>
       </div>
       <div class="main-content${S.view==='tags'&&!showSearch?' full':''}${['tags','chat'].includes(S.view)&&!showSearch?' viewport-content':''}">
         ${S.searchQ&&S.searchResults!==null?renderSearch():
@@ -451,6 +462,7 @@ function render(){
           S.view==='personas'  ?renderPeople():
           S.view==='vinculos' ?renderLinkReviews():
           S.view==='entidades' ?renderEntidades():
+          S.view==='grafo'     ?renderGraph():
           S.view==='vault'     ?renderVault():
           S.view==='chat'      ?renderChat():
           S.view==='tags'      ?renderTags():
@@ -460,6 +472,7 @@ function render(){
     </div>
     ${S.openNote?buildOverlayHTML():''}
     ${renderInboxMcpDialog()}
+    ${renderMobileNavigation()}
   `
   if(scroll){
     const area=app.querySelector('.main-area');if(area)area.scrollTop=scroll.main;
@@ -468,7 +481,10 @@ function render(){
     const chat=app.querySelector('#chat-msgs');if(chat)chat.scrollTop=scroll.chat;
   }
   const inboxDialog=document.getElementById('inbox-mcp-dialog');if(inboxDialog){inboxDialog.showModal();inboxDialog.addEventListener('cancel',event=>{event.preventDefault();inboxMcpClose()});}
+  mountMobileNavigation();
+  if(S.view==='grafo'&&!showSearch)mountGraphView();
   keepActiveNavVisible()
+  if(inputFocus&&!S.navOpen&&!S.ibAccess&&!S.openNote){const input=document.getElementById(inputFocus.id);if(input){input.focus({preventScroll:true});if(inputFocus.start!==null&&typeof input.setSelectionRange==='function'){try{input.setSelectionRange(inputFocus.start,inputFocus.end)}catch{}}}}
   if(S.openNote)document.getElementById('app').querySelector('.overlay-bg').onclick=closeNote
 }
 
@@ -494,10 +510,10 @@ async function doLogin(){
     const d=await r.json()
     if(!r.ok||!d.ok)throw new Error(d.error||'Contraseña incorrecta')
     S.token=d.token;sessionStorage.setItem('pm_token',d.token)
-    loadAll();if(S.view==='memoria')loadMemoryProjects();if(S.view==='todo')loadTodo();if(S.view==='personas')loadPeople();if(S.view==='vault')loadAssociationAudit();if(S.view==='humano')loadHuman();if(S.view==='vinculos')loadLinkReviews()
+    loadAll();if(S.view==='memoria')loadMemoryProjects();if(S.view==='todo')loadTodo();if(S.view==='personas')loadPeople();if(S.view==='grafo')loadGraph();if(S.view==='vault')loadAssociationAudit();if(S.view==='humano')loadHuman();if(S.view==='vinculos')loadLinkReviews()
   }catch(e){S.loginError=e.message;render()}
 }
-function logout(){S.token=null;S.human=newHumanState();S.associations=newAssociationState();S.openAssociations=null;S.openNote=null;sessionStorage.removeItem('pm_token');S.loginError=null;render()}
+function logout(){destroyGraphView();S.graph=null;S.navOpen=false;S.searchOpen=false;S.token=null;S.human=newHumanState();S.associations=newAssociationState();S.openAssociations=null;S.openNote=null;sessionStorage.removeItem('pm_token');S.loginError=null;render()}
 
 // ══════════════════════════════════════════════════════════
 // TABLERO
@@ -598,6 +614,7 @@ function buildOverlayHTML(){
             ${(m.tags||[]).map(t=>`<span class="tag">#${t}</span>`).join('')}
           </div>
           ${(m.estado==='borrador'||m.acceso_inbox_ia)?`${inboxMcpBadge(n)}<button type="button" class="btn btn-ghost" style="margin:10px 0" onclick="inboxMcpOpen(S.openNote.id)">Acceso MCP</button>`:''}
+          <button type="button" class="btn btn-ghost" style="margin:10px 0" onclick="openGraphFor(S.openNote.id)">Ver en grafo</button>
           ${renderNoteAssociations()}
           <div class="meta-grid">
             ${m.cliente?`<div class="mg"><div class="mg-k">Cliente</div><div class="mg-v">${esc(m.cliente)}</div></div>`:''}
@@ -1582,6 +1599,7 @@ function renderVault(){
       <div class="section-title">Vault</div>
       <div style="font-size:13px;color:var(--tx2)">Ámbitos, entidades y conexiones de tus notas</div>
     </div>
+    <section class="graph-entry"><div><h2>Tu vault en un grafo</h2><p>Explorá notas, entidades y ámbitos con controles táctiles.</p></div><button type="button" class="btn btn-primary" onclick="setView('grafo')">Abrir grafo</button></section>
     ${renderAssociationAudit()}
     <div style="background:var(--bg2);border:1px solid var(--b);border-radius:var(--rl);padding:18px;margin-bottom:16px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
@@ -2126,11 +2144,12 @@ function keepActiveNavVisible(){
 }
 window.addEventListener('resize',keepActiveNavVisible)
 function setView(v){
-  S.view=v;S.openNote=null;S.searchQ='';S.searchResults=null
+  S.navOpen=false;S.searchOpen=false;S.view=v;S.openNote=null;S.searchQ='';S.searchResults=null
   const route=new URL(location.href);route.searchParams.set('view',v);route.searchParams.delete('human');history.replaceState(null,'',route)
   if(v==='humano'){humanState().showSaved=false;humanState().kind='all';humanState().page=1;loadHuman()}
   if(v==='memoria'&&S.memoryProjects===null)loadMemoryProjects()
   if(v==='todo'){S.todoFocusId=null;loadTodo()}
+  if(v==='grafo'&&!graphState().data&&!graphState().loading)loadGraph();
   if(v==='vault')loadAssociationAudit()
   if(v==='personas')loadPeople()
   if(v==='vinculos')loadLinkReviews()
@@ -2443,7 +2462,7 @@ function renderTodo(){
 
 const qsView=new URLSearchParams(location.search).get('view')
 if(qsView&&VIEWS.some(v=>v.id===qsView))S.view=qsView
-if(S.token){loadAll();if(S.view==='memoria')loadMemoryProjects();if(S.view==='todo')loadTodo();if(S.view==='personas')loadPeople();if(S.view==='vault')loadAssociationAudit();if(S.view==='humano')loadHuman();if(S.view==='vinculos')loadLinkReviews();render()}else render()
+if(S.token){loadAll();if(S.view==='memoria')loadMemoryProjects();if(S.view==='todo')loadTodo();if(S.view==='personas')loadPeople();if(S.view==='grafo')loadGraph();if(S.view==='vault')loadAssociationAudit();if(S.view==='humano')loadHuman();if(S.view==='vinculos')loadLinkReviews();render()}else render()
 </script>
 </body>
 </html>

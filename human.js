@@ -13,8 +13,8 @@ async function humanRequest(path,options={}){
  }catch(e){if(e.name==='AbortError')throw new Error('La consulta demoró demasiado. Podés reintentar; no se aprobó nada al comprobar.');throw e;}
  finally{clearTimeout(timer);}
 }
-function humanBadge(data){humanState().countData=data;const badge=document.getElementById('human-nav-count');if(badge){badge.textContent=data.total_pending;badge.style.display=data.total_pending?'':'none';}}
-async function loadHumanCount(){if(!S.token)return;try{humanBadge(await humanRequest('/summary'));}catch{const badge=document.getElementById('human-nav-count');if(badge){badge.textContent='!';badge.style.display='';badge.title='No se pudo actualizar el contador de pendientes';}}}
+function humanBadge(data){humanState().countData=data;for(const id of ['human-nav-count','human-mobile-count']){const badge=document.getElementById(id);if(badge){badge.textContent=data.total_pending;badge.style.display=data.total_pending?'':'none';}}}
+async function loadHumanCount(){if(!S.token)return;try{humanBadge(await humanRequest('/summary'));}catch{for(const id of ['human-nav-count','human-mobile-count']){const badge=document.getElementById(id);if(badge){badge.textContent='!';badge.style.display='';badge.title='No se pudo actualizar el contador de pendientes';}}}}
 async function loadHuman(){
  if(humanState().showSaved&&S.view==='humano')return loadHumanSaved();
  const h=humanState(),serial=++h.request;h.loading=true;h.error=null;humanRender();

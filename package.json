@@ -10,7 +10,8 @@
     "test:list-scroll": "node scripts/test-list-scroll-browser.cjs",
     "test:decision-context": "node scripts/test-decision-context-browser.cjs",
     "test:todo-assignments": "node scripts/test-todo-assignments-browser.cjs",
-    "test:inbox-access": "node scripts/test-inbox-access-browser.cjs"
+    "test:inbox-access": "node scripts/test-inbox-access-browser.cjs",
+    "test:mobile-graph": "node scripts/test-mobile-graph-browser.cjs"
   },
   "dependencies": {
     "@google/genai": "^2.8.0",
