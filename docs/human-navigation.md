@@ -151,3 +151,32 @@ o decisión. Assets 20261111-todo-assignments; requiere API y frontend coordinad
 `npm run test:todo-assignments` prueba crear, editar, recargar, borrar, búsqueda,
 validación de fechas y reintento de respuesta perdida en escritorio/móvil, sólo
 contra la demo sintética. Se mantiene la auditoría de scroll y el flujo Humano.
+
+## Habilitar borradores para MCP
+
+Cada fila de INBOX y su detalle tienen **Acceso MCP**. El cuadro consulta el
+estado actual y muestra los permisos de lectura que cambiarían. Habilitar requiere
+marcar la autorización de lectura completa y confirmar. El permiso sirve para MCP
+y otras consultas IA, sin dar edición ni aprobar la nota: sigue como borrador con
+el mismo estado de revisión. Cancelar/Escape no escribe.
+
+La autorización se guarda fuera del archivo y queda ligada a su contenido exacto.
+Si cambia el original, deja de aplicarse y se pide comprobar/autorizar de nuevo.
+No se rebaja sensibilidad ni se habilitan fuentes vinculadas: salud, reservado,
+privado/sensible/secreto o dependencias bloqueadas impiden habilitar desde aquí.
+Un original inmutable puede habilitarse para lectura sin reescribirlo.
+
+El mismo control permite revocar la autorización y recuperar los permisos del
+archivo. Revocar no borra lo que un agente ya leyó. La revocación también está
+accesible desde el panel de una nota autorizada después de su revisión documental.
+Si el archivo ya permitía acceso IA, no se crea una autorización innecesaria.
+
+Los endpoints son exclusivos de la sesión humana del propietario; una API key
+externa o un actor assistant no puede otorgarse permisos. Respuestas perdidas
+reutilizan el mismo request_id; un conflicto requiere comprobar y confirmar de
+nuevo. Cambios sólo tras el clic del dueño: publicar el botón no habilita notas.
+
+Assets 20261112-inbox-access. Prueba: `npm run test:inbox-access` contra demo
+sintética; incluye escritorio/móvil, cancelación, confirmación, visibilidad y
+revocación, respuesta perdida, conflictos, fuentes inmutables, sesión y contenido
+sin cambios. La API incluye su suite de consentimiento y dependencias.

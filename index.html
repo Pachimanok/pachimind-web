@@ -16,7 +16,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;0,9..144,700;1,9..144,400&family=DM+Sans:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/people.css">
   <link rel="stylesheet" href="/associations.css">
-  <link rel="stylesheet" href="/human.css?v=20261111-todo-assignments">
+  <link rel="stylesheet" href="/human.css?v=20261112-inbox-access">
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     :root{
@@ -303,6 +303,7 @@
     }
 .todo-view{padding-bottom:20px}
 .todo-view{line-height:1.5;overflow-wrap:anywhere}.todo-view input,.todo-view select,.todo-view textarea{background:var(--bg2);color:var(--tx);border:1px solid var(--bb);border-radius:8px;padding:9px 11px;font:inherit;min-height:40px}.todo-view input:focus-visible,.todo-view select:focus-visible,.todo-view textarea:focus-visible{outline:2px solid var(--ac);outline-offset:2px}.todo-view label{font-size:13px;color:var(--tx2)}.todo-view textarea{resize:vertical}.todo-view button:disabled{opacity:.5;cursor:wait}.todo-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}.todo-fields label{display:grid;gap:5px}.todo-fields input,.todo-fields select{width:100%}
+.inbox-mcp-card-actions{display:flex;gap:10px;align-items:center;flex-shrink:0}.inbox-mcp-card-actions button{font-size:12px;padding:7px 10px}.inbox-mcp-dialog{width:min(640px,calc(100vw - 28px));max-height:calc(100vh - 28px);max-height:calc(100dvh - 28px);margin:auto;padding:0;background:var(--bg2);color:var(--tx);border:1px solid var(--ac);border-radius:12px;overflow:hidden}.inbox-mcp-dialog[open]{display:flex;flex-direction:column}.inbox-mcp-dialog::backdrop{background:rgba(0,0,0,.72)}.inbox-mcp-dialog header,.inbox-mcp-dialog footer{padding:16px 20px;flex-shrink:0;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}.inbox-mcp-dialog header{border-bottom:1px solid var(--b)}.inbox-mcp-dialog h2{font-size:20px}.inbox-mcp-scroll{overflow:auto;min-height:0;padding:18px 20px;font-size:13px;line-height:1.6;overflow-wrap:anywhere}.inbox-mcp-scroll p{margin:8px 0}.inbox-mcp-dialog footer{border-top:1px solid var(--b)}.inbox-mcp-actions{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0}.inbox-mcp-confirm{display:flex;gap:10px;align-items:flex-start;padding:14px 0}.inbox-mcp-confirm input{accent-color:var(--ac);margin-top:5px;width:18px;height:18px;flex:none}.inbox-mcp-dialog .btn:disabled{opacity:.45;cursor:not-allowed}.inbox-mcp-dialog .btn:focus-visible,.inbox-mcp-confirm input:focus-visible{outline:2px solid var(--ac);outline-offset:3px}.inbox-mcp-dialog table{width:100%;border-collapse:collapse;font-size:12px;margin:14px 0}.inbox-mcp-dialog th,.inbox-mcp-dialog td{text-align:left;padding:8px;border-bottom:1px solid var(--b)}@media(max-width:700px){.inbox-mcp-dialog header,.inbox-mcp-dialog footer,.inbox-mcp-scroll{padding:14px}.inbox-mcp-dialog footer .btn{flex:1;min-width:110px}.inbox-mcp-card-actions{flex-direction:column;gap:4px}}
     ::-webkit-scrollbar{width:4px}
     ::-webkit-scrollbar-track{background:transparent}
     ::-webkit-scrollbar-thumb{background:var(--bb);border-radius:2px}
@@ -311,8 +312,8 @@
 <body>
 <div id="app" style="display:flex;width:100%;min-height:100vh"></div>
 <script src="/people.js"></script>
-<script src="/human.js?v=20261111-todo-assignments"></script>
-<script src="/relationship-review.js?v=20261111-todo-assignments"></script>
+<script src="/human.js?v=20261112-inbox-access"></script>
+<script src="/relationship-review.js?v=20261112-inbox-access"></script>
 <script src="/associations.js"></script>
 <script>
 // ══════════════════════════════════════════════════════════
@@ -329,7 +330,7 @@ const S={
   searchQ:'',searchResults:null,searchLoading:false,
   nnStep:'input',nnTitle:'',nnContent:'',nnParsed:null,nnResult:null,nnError:null,nnConfirming:false,nnManualResp:'',
   recorder:null,recording:false,recTimer:null,recSecs:0,transcribing:false,
-  ibStep:'list',ibDrafts:[],ibLoading:false,ibError:null,ibNote:null,ibParsed:null,ibResult:null,ibConfirming:false,ibManualResp:'',
+  ibAccess:null,ibStep:'list',ibDrafts:[],ibLoading:false,ibError:null,ibNote:null,ibParsed:null,ibResult:null,ibConfirming:false,ibManualResp:'',
   paLoading:false,paTotal:0,paDone:0,paResults:[],paError:null,
   enTab:'persona',enList:{},enLoading:false,enError:null,
   enStep:'list',enForm:{title:'',tipo:'persona',area:'Laboral',organizacion:'',cliente:'',rol:'',tags:'',content:''},
@@ -458,6 +459,7 @@ function render(){
       </div>
     </div>
     ${S.openNote?buildOverlayHTML():''}
+    ${renderInboxMcpDialog()}
   `
   if(scroll){
     const area=app.querySelector('.main-area');if(area)area.scrollTop=scroll.main;
@@ -465,6 +467,7 @@ function render(){
     const rows=app.querySelector('.tag-notes');if(rows)rows.scrollTop=scroll.tagNotes;
     const chat=app.querySelector('#chat-msgs');if(chat)chat.scrollTop=scroll.chat;
   }
+  const inboxDialog=document.getElementById('inbox-mcp-dialog');if(inboxDialog){inboxDialog.showModal();inboxDialog.addEventListener('cancel',event=>{event.preventDefault();inboxMcpClose()});}
   keepActiveNavVisible()
   if(S.openNote)document.getElementById('app').querySelector('.overlay-bg').onclick=closeNote
 }
@@ -594,6 +597,7 @@ function buildOverlayHTML(){
             ${tags.map(t=>`<span class="tag ac">${t}</span>`).join('')}
             ${(m.tags||[]).map(t=>`<span class="tag">#${t}</span>`).join('')}
           </div>
+          ${(m.estado==='borrador'||m.acceso_inbox_ia)?`<button type="button" class="btn btn-ghost" style="margin:10px 0" onclick="inboxMcpOpen(S.openNote.id)">Acceso MCP</button>`:''}
           ${renderNoteAssociations()}
           <div class="meta-grid">
             ${m.cliente?`<div class="mg"><div class="mg-k">Cliente</div><div class="mg-v">${esc(m.cliente)}</div></div>`:''}
@@ -954,7 +958,7 @@ function renderIbList(){
           <div style="font-family:'Fraunces',serif;font-size:14px;font-weight:600;margin-bottom:3px">${esc(d.title)}</div>
           ${d.excerpt?`<div style="font-size:12px;color:var(--tx3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(d.excerpt)}</div>`:''}
         </div>
-        <span style="color:var(--tx3)">→</span>
+        <div class="inbox-mcp-card-actions"><button type="button" class="btn btn-ghost" data-inbox-access-id="${esc(d.id)}" onclick="event.stopPropagation();inboxMcpOpen(this.dataset.inboxAccessId)">Acceso MCP</button><span style="color:var(--tx3)">→</span></div>
       </div>`).join('')}`
 }
 function renderIbRead(){
@@ -962,6 +966,7 @@ function renderIbRead(){
   return`
     <button class="btn-back" onclick="S.ibStep='list';render()">‹ Inbox</button>
     <div class="section-title" style="font-size:16px">${esc(n.title)}</div>
+    <button type="button" class="btn btn-ghost" style="margin:12px 0" onclick="inboxMcpOpen(S.ibNote.id)">Acceso MCP</button>
     <div style="background:var(--bg2);border:1px solid var(--b);border-radius:var(--r);padding:12px;max-height:200px;overflow-y:auto;font-family:'JetBrains Mono',monospace;font-size:11.5px;line-height:1.75;color:var(--tx2);white-space:pre-wrap;margin:14px 0">${esc(n.content||n.excerpt||'(sin contenido)')}</div>
     <button class="btn btn-gemini btn-full" onclick="clasificarInbox()">✦ Clasificar con Gemini</button>
     <div class="or-row">o</div>
@@ -1261,6 +1266,45 @@ function resetNueva(){S.nnStep='input';S.nnTitle='';S.nnContent='';S.nnParsed=nu
 // ══════════════════════════════════════════════════════════
 // INBOX ACTIONS
 // ══════════════════════════════════════════════════════════
+// Per-note owner consent; no bulk enabling or automatic approval.
+async function inboxMcpOpen(id){
+ if(S.ibAccess?.busy)return;
+ S.ibAccess={id,loading:true,data:null,error:null,result:null,confirmed:false,busy:false,command:null,action:null};render();await inboxMcpLoad();
+}
+async function inboxMcpLoad(){
+ const a=S.ibAccess;if(!a||a.busy)return;a.loading=true;a.data=null;a.action=null;a.error=null;a.result=null;a.confirmed=false;a.command=null;a.needsRefresh=false;render();
+ try{const data=await humanRequest('/inbox-access/'+encodeURIComponent(a.id));if(S.ibAccess!==a)return;a.data=data;a.action=data.actions.enable.allowed?'enable':data.actions.revoke.allowed?'revoke':null;}
+ catch(e){if(S.ibAccess===a)a.error=e.message;}
+ finally{if(S.ibAccess===a){a.loading=false;render();}}
+}
+function inboxMcpClose(){if(S.ibAccess?.busy)return;S.ibAccess=null;render();}
+function inboxMcpChoose(action){const a=S.ibAccess;if(!a||a.busy||a.command||!a.data?.actions[action]?.allowed)return;a.action=action;a.confirmed=false;render();}
+function inboxMcpConfirm(confirmed){const a=S.ibAccess;if(!a)return;a.confirmed=confirmed;const button=document.getElementById('inbox-mcp-submit');if(button)button.disabled=!confirmed||a.busy||a.needsRefresh;}
+async function inboxMcpCommit(){
+ const a=S.ibAccess;if(!a||a.busy||!a.confirmed||!a.action||a.needsRefresh)return;
+ a.command=a.command||{request_id:crypto.randomUUID(),revision:a.data.revision,action:a.action,confirmed:true,authorized_fields:Object.keys(a.data.actions[a.action].changes)};
+ a.busy=true;a.error=null;render();
+ try{
+  const result=await humanRequest('/inbox-access/'+encodeURIComponent(a.id),{method:'POST',body:JSON.stringify(a.command)});
+  if(!result.verified||result.id!==a.id)throw new Error('La respuesta no confirmó el acceso. Comprobalo antes de volver a autorizar.');
+  a.result=result;a.data=result.access;
+  try{const note=await captureJSON('/notes/'+encodeURIComponent(a.id));if(S.ibNote?.id===a.id)S.ibNote=note;if(S.openNote?.id===a.id)S.openNote=note;S.ibDrafts=S.ibDrafts.map(n=>n.id===a.id?{...n,metadata:note.metadata}:n);}catch{a.refreshNotice='El permiso se guardó. Actualizá la lista para renovar su vista.';}
+ }catch(e){a.error=e.message;if([403,404,409,422].includes(e.status)){a.needsRefresh=true;a.confirmed=false;}}
+ finally{a.busy=false;render();}
+}
+function renderInboxMcpDialog(){
+ const a=S.ibAccess;if(!a)return '';const d=a.data,action=d&&a.action?d.actions[a.action]:null;
+ const names={ia_permiso:'Lectura por IA',ia_indexar:'Disponible para consultas IA'},value=v=>v===true?'Sí':v===false?'No':v==='allow'?'Contenido completo':v==='deny'?'No permitida':v==='summary_only'?'Sólo resumen':String(v);
+ return `<dialog id="inbox-mcp-dialog" class="inbox-mcp-dialog" aria-labelledby="inbox-mcp-title"><header><h2 id="inbox-mcp-title">Acceso de lectura en MCP</h2><button type="button" class="btn btn-ghost" onclick="inboxMcpClose()" ${a.busy?'disabled':''}>Cerrar</button></header><div class="inbox-mcp-scroll">
+ ${a.loading?'<p role="status">Comprobando el acceso de esta nota…</p>':''}${a.error?`<p role="alert" class="human-alert">${esc(a.error)}</p><button type="button" class="btn btn-ghost" onclick="inboxMcpLoad()" ${a.busy?'disabled':''}>Volver a comprobar acceso</button>`:''}
+ ${a.result?`<p role="status" class="human-receipt">${a.result.action==='enable'?'Lectura habilitada y verificada.':'Autorización revocada y verificada.'} La nota conserva su estado y revisión documental.</p>${a.refreshNotice?`<p>${esc(a.refreshNotice)}</p>`:''}`:''}
+ ${d?`<h3>${esc(d.title)}</h3><p>${d.available_to_ai?'Visible para MCP y consultas IA.':'Esta nota no está habilitada para lectura IA.'}</p><p>${esc(d.effect)}</p>
+ ${!a.result?`<div class="inbox-mcp-actions">${Object.entries(d.actions).filter(([,v])=>v.allowed).map(([key])=>`<button type="button" class="btn ${a.action===key?'btn-primary':'btn-ghost'}" onclick="inboxMcpChoose('${key}')" ${a.busy||a.command?'disabled':''}>${key==='enable'?'Habilitar lectura MCP':'Revocar autorización MCP'}</button>`).join('')}</div>
+ ${action?`<p>${esc(action.reason)}</p>${Object.keys(action.changes).length?`<table><thead><tr><th>Permiso</th><th>Actual</th><th>Después</th></tr></thead><tbody>${Object.entries(action.changes).map(([k,v])=>`<tr><td>${names[k]||esc(k)}</td><td>${esc(value(v.before))}</td><td>${esc(value(v.after))}</td></tr>`).join('')}</tbody></table>`:''}
+ <label class="inbox-mcp-confirm"><input type="checkbox" aria-label="Autorizo este cambio de acceso" onchange="inboxMcpConfirm(this.checked)" ${a.confirmed?'checked':''} ${a.busy||a.needsRefresh?'disabled':''}>${a.action==='enable'?'Autorizo que los agentes conectados y las consultas IA lean el contenido completo de esta nota.':'Confirmo retirar esta autorización de lectura y recuperar los permisos originales.'}</label>`:`<p>${esc(d.actions.enable.reason)}</p>`}`:''}`:''}
+ </div><footer><button type="button" class="btn btn-ghost" onclick="inboxMcpClose()" ${a.busy?'disabled':''}>${a.result?'Listo':'Cancelar'}</button>${action&&!a.result?`<button type="button" id="inbox-mcp-submit" class="btn btn-primary" onclick="inboxMcpCommit()" ${!a.confirmed||a.busy||a.needsRefresh?'disabled':''}>${a.busy?'Guardando…':a.error&&a.command?'Reintentar misma autorización':a.action==='enable'?'Confirmar habilitación':'Confirmar revocación'}</button>`:''}</footer></dialog>`;
+}
+
 async function selectDraft(i){
   S.ibNote=null;S.ibParsed=null;S.ibError=null;S.ibStep='list';S.ibLoading=true;render()
   try{const r=await api(`/notes/${encodeURIComponent(S.ibDrafts[i].id)}`);if(!r.ok)throw new Error();S.ibNote=await r.json();S.ibStep='read'}

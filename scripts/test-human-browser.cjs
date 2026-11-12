@@ -189,6 +189,9 @@ const out=process.env.HUMAN_SCREENSHOT_DIR||path.join(process.cwd(),'artifacts',
   await page.getByRole('button',{name:'Dejar pendiente y seguir',exact:true}).click();
   await page.waitForFunction(()=>S.human.page===2&&S.human.detail?.key===S.human.data.results[0]?.key&&!S.human.detailBusy);
   await page.getByRole('button',{name:'Volver a la lista',exact:true}).click();
+  while(await page.evaluate(()=>S.human.data.page*S.human.data.per_page<S.human.data.total)){
+   const nextPage=await page.evaluate(()=>S.human.page+1);await page.locator('.human-pagination').getByRole('button',{name:'Siguiente',exact:true}).click();await page.waitForFunction(page=>!S.human.loading&&S.human.data.page===page,nextPage);
+  }
   const final=await page.evaluate(()=>S.human.data.results.at(-1));
   await page.locator('.human-card button[data-key="'+final.key+'"]').click();await page.waitForFunction(()=>!!S.human.detail&&!S.human.detailBusy);
   await page.getByRole('button',{name:'Dejar pendiente y seguir',exact:true}).click();
