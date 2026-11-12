@@ -308,17 +308,17 @@
     ::-webkit-scrollbar-track{background:transparent}
     ::-webkit-scrollbar-thumb{background:var(--bb);border-radius:2px}
   </style>
-  <link rel="stylesheet" href="/graph.css?v=20261112-mobile-graph">
-  <link rel="stylesheet" href="/mobile.css?v=20261112-mobile-graph">
+  <link rel="stylesheet" href="/graph.css?v=20261112-pro-graph">
+  <link rel="stylesheet" href="/mobile.css?v=20261112-pro-graph">
 </head>
 <body>
 <div id="app" style="display:flex;width:100%;min-height:100vh"></div>
 <script src="/people.js"></script>
-<script src="/human.js?v=20261112-mobile-graph"></script>
+<script src="/human.js?v=20261112-pro-graph"></script>
 <script src="/relationship-review.js?v=20261112-inbox-access"></script>
 <script src="/associations.js"></script>
-<script src="/mobile.js?v=20261112-mobile-graph"></script>
-<script src="/graph.js?v=20261112-mobile-graph"></script>
+<script src="/mobile.js?v=20261112-pro-graph"></script>
+<script src="/graph.js?v=20261112-pro-graph"></script>
 <script>
 // ══════════════════════════════════════════════════════════
 // STATE
@@ -451,7 +451,7 @@ function render(){
         <button type="button" class="icon-button" onclick="toggleTheme()" aria-label="Cambiar tema" title="Cambiar tema">${S.theme==='dark'?'○':'●'}</button>
         <button type="button" class="icon-button" onclick="logout()" aria-label="Salir" title="Salir">⎋</button>
       </div>
-      <div class="main-content${S.view==='tags'&&!showSearch?' full':''}${['tags','chat'].includes(S.view)&&!showSearch?' viewport-content':''}">
+      <div class="main-content${S.view==='tags'&&!showSearch?' full':''}${['tags','chat','grafo'].includes(S.view)&&!showSearch?' viewport-content':''}${S.view==='grafo'&&!showSearch?' graph-content':''}">
         ${S.searchQ&&S.searchResults!==null?renderSearch():
           S.view==='tablero'   ?renderTablero():
           S.view==='humano'    ?renderHuman():

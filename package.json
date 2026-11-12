@@ -11,12 +11,14 @@
     "test:decision-context": "node scripts/test-decision-context-browser.cjs",
     "test:todo-assignments": "node scripts/test-todo-assignments-browser.cjs",
     "test:inbox-access": "node scripts/test-inbox-access-browser.cjs",
-    "test:mobile-graph": "node scripts/test-mobile-graph-browser.cjs"
+    "test:mobile-graph": "node scripts/test-mobile-graph-browser.cjs",
+    "test:graph-pro": "node scripts/test-graph-pro-browser.cjs"
   },
   "dependencies": {
     "@google/genai": "^2.8.0",
     "dotenv": "^17.4.2",
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "d3-force": "3.0.0"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",

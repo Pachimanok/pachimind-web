@@ -42,3 +42,34 @@ Regresión de todas las listas con rueda/touch, chat, tags, paneles y posición;
 Humano y consentimiento individual de Inbox. Fixture adicional con 500 notas y
 499 vínculos, reduced-motion. Las pruebas emulan tamaños/gestos: no se realizaron
 sobre un iPhone físico.
+
+## Explorador estilo Obsidian (actualización 12/11/2026)
+
+El grafo ocupa el espacio disponible. Tiene controles SVG, paneles flotantes para
+filtros/lista y detalle lateral (panel inferior en celular), y modo ampliado con
+salida por botón o Escape. Se conserva el scroll del resto de la aplicación.
+
+La distribución utiliza d3-force 3.0.0, con repulsión Barnes–Hut, resortes y
+colisiones en un Web Worker local. El paquete va incluido en graph-layout.js; no
+se consulta una CDN. El worker recibe IDs, radios, posiciones y extremos de vínculos,
+no cuerpos de notas. Se incluye graph-layout.LICENSE.txt con las licencias MIT de
+d3-force/d3-dispatch/d3-quadtree/d3-timer. Reduced-motion calcula sin animar la
+convergencia; la simulación se detiene al estabilizar y se puede pausar/reanudar.
+
+Por defecto muestra notas conectadas, sin nodos virtuales de ámbitos y en tonos
+neutros. «Huérfanas ocultas» hace explícito el filtro; «Notas sin vínculos» en
+Filtros permite incluirlas. Los ámbitos opcionales siguen usando líneas punteadas.
+Se puede elegir color neutro/por tipo/por ámbito, flechas, etiquetas, separación y
+distancia de vínculos. Tamaño de nodo según grado; hover/selección resaltan vecinos.
+Arrastrar un nodo cambia su posición visual, sin modificar el vault. Doble clic
+abre la nota y un toque permite seleccionarla y consultar el panel de detalle.
+
+Se mantiene la API anterior y sus restricciones; no hay cambios en MCP, permisos
+ni datos. La publicación requiere sólo assets estáticos y no reinicia servicios.
+Si el worker no puede arrancar, hay aviso explícito y se mantiene la exploración
+del dibujo inicial, sin afirmar que la distribución automática esté funcionando.
+
+Pruebas específicas: worker real/encuadre, todo el alto disponible, arrastre y hover,
+pausa, controles de fuerzas, huérfanas/ámbitos, colores, ampliación y Escape en
+320/390/1440. Regresión de navegación/touch/pellizco/apertura/filtros en
+360/390/768/1440, más 500 nodos/499 vínculos con reduced-motion.
